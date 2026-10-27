@@ -143,7 +143,7 @@ def style_plotly_figure(fig, title=""):
 
 ALLOW_USER_EXPORT = False
 
-# Mở trang Đăng nhập Sign-in Gate chuẩn gốc
+# Gọi cổng đăng nhập auth
 if hasattr(auth, "login_gate"):
     auth.login_gate()
 elif hasattr(auth, "login"):
@@ -153,7 +153,7 @@ user = auth.current_user() if hasattr(auth, "current_user") else {"username": "a
 admin = auth.is_admin() if hasattr(auth, "is_admin") else True
 
 
-@st.cache_data(ttl=600, show_spinner="Đang nạp dữ liệu...")
+@st.cache_data(ttl=60, show_spinner="Đang nạp dữ liệu...")
 def get_base(signature: tuple) -> pd.DataFrame:
     return du.load_base()
 
@@ -194,7 +194,8 @@ if product != "Tất cả":
     df = df[df["Tên sản phẩm"] == product]
 
 stars = st.sidebar.multiselect("Số sao", [1, 2, 3, 4, 5], default=[1, 2, 3, 4, 5])
-df = df[df["Số sao"].isin(stars)]
+if stars and not df.empty:
+    df = df[df["Số sao"].isin(stars)]
 
 if not df.empty and df["Ngày review"].notna().any():
     valid_dates = df["Ngày review"].dropna()
@@ -205,7 +206,7 @@ if not df.empty and df["Ngày review"].notna().any():
             df = df[(df["Ngày review"].dt.date >= rng[0]) & (df["Ngày review"].dt.date <= rng[1])]
 
 keyword = st.sidebar.text_input("Tìm trong nội dung review")
-if keyword.strip():
+if keyword.strip() and not df.empty:
     df = df[df["Nội dung review"].str.contains(keyword.strip(), case=False, na=False, regex=False)]
 
 st.sidebar.caption(f"{len(df):,} / {len(base):,} review sau khi lọc".replace(",", "."))
