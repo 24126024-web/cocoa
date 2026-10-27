@@ -83,7 +83,7 @@ if keyword.strip():
 
 st.sidebar.caption(f"{len(df):,} / {len(base):,} review sau khi lọc".replace(",", "."))
 if admin:
-    st.sidebar.caption(f"📁 Dữ liệu: {du.DATA_DIR}")
+    st.sidebar.caption(f"📁 Dữ liệu: Đã tải")
 
 h1, h2 = st.columns([1, 12], vertical_alignment="center")
 h1.image(str(LOGO_PATH), width=70)
