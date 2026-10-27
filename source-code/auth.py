@@ -20,8 +20,8 @@ elif (CURRENT_DIR.parent / "assets").exists():
 else:
     ASSETS = CURRENT_DIR / "assets"
 
-# ĐỔI ƯU TIÊN: Dùng logo1.png trước, nếu không thấy mới dùng logo.png
-LOGO = ASSETS / "logo1.png" if (ASSETS / "logo1.png").exists() else ASSETS / "logo.png"
+# CHỈ ĐỊNH CHÍNH XÁC FILE logo1.png
+LOGO = ASSETS / "logo1.png"
 
 
 def _h(pw: str) -> str:
@@ -72,7 +72,7 @@ def login_gate() -> None:
     bg1_b64 = get_image_base64(bg1_file)
     logo_b64 = get_image_base64(LOGO)
 
-    # CSS Nền mảng màu trắng kem (#F8F5EE) & Ảnh hiển thị góc dưới
+    # CSS Nền màu trắng kem chuẩn #F8F5EE & Lớp phủ ảnh bg1.jpg hợp lý
     custom_css = f"""
     <style>
         [data-testid="stSidebar"] {{ display: none !important; }}
@@ -116,8 +116,10 @@ def login_gate() -> None:
         }}
 
         .left-logo {{
-            width: 85px;
+            width: 120px !important;
+            max-width: 100%;
             margin-bottom: 15px;
+            object-fit: contain;
         }}
 
         .left-title {{
@@ -141,15 +143,15 @@ def login_gate() -> None:
             text-transform: uppercase;
         }}
 
-        /* Cột phải - Nền màu trắng kem + Ảnh sản phẩm hiển thị góc dưới */
+        /* Cột phải - Phủ nền trắng kem + Ảnh chìm đẹp mắt */
         div[data-testid="stColumn"]:nth-child(2) {{
             background-color: #F8F5EE !important;
             padding: 40px 45px !important;
             position: relative;
-            background-image: url('{bg1_b64}') !important;
+            background-image: linear-gradient(rgba(248, 245, 238, 0.75), rgba(248, 245, 238, 0.75)), url('{bg1_b64}') !important;
             background-repeat: no-repeat !important;
-            background-position: bottom right !important;
-            background-size: 320px auto !important;
+            background-position: center !important;
+            background-size: cover !important;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -163,7 +165,7 @@ def login_gate() -> None:
         }}
 
         .welcome-sub {{
-            color: #666666;
+            color: #555555;
             font-size: 13px;
             margin-bottom: 25px;
             font-weight: 500;
@@ -177,6 +179,12 @@ def login_gate() -> None:
             position: relative;
             z-index: 2;
             max-width: 320px;
+        }}
+
+        /* Ô nhập liệu tinh chỉnh cho sạch đẹp */
+        div[data-baseweb="input"] {{
+            background-color: rgba(255, 255, 255, 0.9) !important;
+            border-radius: 8px !important;
         }}
 
         /* Tùy chỉnh Nút Đăng nhập */
