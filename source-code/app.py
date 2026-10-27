@@ -63,6 +63,7 @@ def render_cocoon_login():
     js_img_array = str(slides_b64).replace("'", '"')
     first_slide = slides_b64[0] if slides_b64 else ""
 
+    # Dùng Template thay cho f-string để tránh lỗi SyntaxError với ngoặc nhọn {}
     template = Template("""
     <style>
         [data-testid="stSidebar"] { display: none; }
@@ -237,33 +238,14 @@ def render_cocoon_login():
             submitted = st.form_submit_button("LOG IN", use_container_width=True)
 
             if submitted:
-                # Kiểm tra nếu auth.py có hàm login hoặc login_user
-                login_success = False
-                if hasattr(auth, "login") and callable(auth.login):
-                    login_success = auth.login(username, password)
-                elif hasattr(auth, "login_user") and callable(auth.login_user):
-                    login_success = auth.login_user(username, password)
-                else:
-                    # Fallback gán session mặc định nếu không gọi trực tiếp hàm login
-                    st.session_state["user"] = {"username": username, "role": "admin"}
-                    login_success = True
-
-                if login_success:
+                if auth.login(username, password):
                     st.success("Đăng nhập thành công!")
                     st.rerun()
                 else:
                     st.error("Tên đăng nhập hoặc mật khẩu không chính xác.")
 
-# Kiểm tra Đăng nhập thích ứng linh hoạt với auth.py của bạn
-def check_is_logged_in():
-    if hasattr(auth, "is_logged_in") and callable(auth.is_logged_in):
-        return auth.is_logged_in()
-    # Nếu auth.py không có hàm is_logged_in, kiểm tra qua current_user hoặc session_state
-    if hasattr(auth, "current_user") and callable(auth.current_user):
-        return auth.current_user() is not None
-    return "user" in st.session_state and st.session_state["user"] is not None
-
-if not check_is_logged_in():
+# Kiểm tra Đăng nhập
+if not auth.is_logged_in():
     render_cocoon_login()
     st.stop()
 
@@ -322,4 +304,19 @@ if keyword.strip():
     df = df[df["Nội dung review"].str.contains(keyword.strip(), case=False, na=False, regex=False)]
 
 st.sidebar.caption(f"{len(df):,} / {len(base):,} review sau khi lọc".replace(",", "."))
-if
+if admin:
+    st.sidebar.caption("📁 Dữ liệu: Đã tải")
+
+h1, h2 = st.columns([1, 12], vertical_alignment="center")
+h1.image(str(LOGO_PATH), width=70)
+h2.title("Cocoon Analytics")
+st.caption("Phân tích hành vi người tiêu dùng và phản hồi khách hàng — Shopee & Hasaki")
+
+if df.empty:
+    st.warning("Không có dữ liệu phù hợp với bộ lọc hiện tại.")
+    st.stop()
+
+prod = du.product_table(df)
+tab_names = ["📊 Tổng quan", "🗂️ Dữ liệu", "📈 Power BI", "🤖 Kết quả mô hình"]
+if admin:
+    tab_names.append("🔧 Quản trị")
