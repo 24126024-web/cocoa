@@ -172,4 +172,124 @@ def load_base() -> pd.DataFrame:
             "Đã mua hàng": hk_merged["Đã mua hàng"] if "Đã mua hàng" in hk_merged.columns else "Có",
         })
 
-        # --- GỘP CẢ
+        # --- GỘP CẢ 2 NỀN TẢNG ---
+        df = pd.concat([shopee_df, hasaki_df], ignore_index=True)
+
+        # Định dạng ngày tháng
+        df["Ngày review"] = pd.to_datetime(df["Ngày review"], errors="coerce").dt.normalize()
+        df["Tháng"] = df["Ngày review"].dt.to_period("M").dt.to_timestamp()
+        df["Nội dung review"] = df["Nội dung review"].fillna("").astype(str)
+
+        for c in ("Giá bán", "Lượt bán", "Doanh thu 30 ngày", "Số sao"):
+            df[c] = pd.to_numeric(df[c], errors="coerce")
+
+        # Gán hạng mục & dòng sản phẩm
+        df["Hạng mục"] = df["Tên sản phẩm"].map(classify_category)
+        df["Dòng sản phẩm"] = df["Tên sản phẩm"].map(classify_line)
+        df["Cảm xúc"] = df["Số sao"].apply(sentiment_from_star)
+
+        return df
+
+    except Exception as e:
+        print(f"Lỗi load_base: {e}")
+        return pd.DataFrame(columns=[
+            "rid", "Nguồn", "Mã SP", "Tên sản phẩm", "Giá bán", "Lượt bán", 
+            "Doanh thu 30 ngày", "Số sao", "Nội dung review", "Ngày review", 
+            "Đã mua hàng", "Tháng", "Hạng mục", "Dòng sản phẩm", "Cảm xúc"
+        ])
+
+
+# ---------------------------------------------------------------- xóa mềm
+def load_deleted() -> list[dict]:
+    if DELETED_FILE.exists():
+        try:
+            data = json.loads(DELETED_FILE.read_text(encoding="utf-8"))
+            if isinstance(data, list):
+                return [d for d in data if isinstance(d, dict) and "rid" in d]
+        except Exception:
+            return []
+    return []
+
+
+def delete_rows(rids: list[str], by: str) -> int:
+    log = load_deleted()
+    existing = {d["rid"] for d in log if isinstance(d, dict) and "rid" in d}
+    now = datetime.now().isoformat(timespec="seconds")
+    new = [{"rid": r, "by": by, "at": now} for r in rids if r not in existing]
+    DELETED_FILE.write_text(json.dumps(log + new, ensure_ascii=False, indent=1), encoding="utf-8")
+    return len(new)
+
+
+def restore_all() -> None:
+    if DELETED_FILE.exists():
+        DELETED_FILE.unlink()
+
+
+def apply_deletions(df: pd.DataFrame) -> pd.DataFrame:
+    if df is None or not isinstance(df, pd.DataFrame) or df.empty:
+        return pd.DataFrame(columns=[
+            "rid", "Nguồn", "Mã SP", "Tên sản phẩm", "Giá bán", "Lượt bán", 
+            "Doanh thu 30 ngày", "Số sao", "Nội dung review", "Ngày review", 
+            "Đã mua hàng", "Tháng", "Hạng mục", "Dòng sản phẩm", "Cảm xúc"
+        ])
+    if "rid" not in df.columns:
+        return df
+
+    log = load_deleted()
+    gone = {d["rid"] for d in log if isinstance(d, dict) and "rid" in d}
+    return df[~df["rid"].isin(gone)] if gone else df
+
+
+# ---------------------------------------------------------------- tổng hợp
+def product_table(df: pd.DataFrame) -> pd.DataFrame:
+    if df is None or not isinstance(df, pd.DataFrame) or df.empty:
+        return pd.DataFrame()
+    g = df.groupby(["Nguồn", "Mã SP", "Tên sản phẩm", "Hạng mục", "Dòng sản phẩm"], observed=True, dropna=False)
+    out = g.agg(**{
+        "Giá bán": ("Giá bán", "first"),
+        "Lượt bán": ("Lượt bán", "first"),
+        "Doanh thu 30 ngày": ("Doanh thu 30 ngày", "first"),
+        "Số review": ("rid", "size"),
+        "Sao TB (review)": ("Số sao", "mean"),
+        "Số review 1★": ("Số sao", lambda s: int((s == 1).sum())),
+        "Số review 5★": ("Số sao", lambda s: int((s == 5).sum())),
+    }).reset_index()
+    out["Sao TB (review)"] = out["Sao TB (review)"].round(2)
+    return out.sort_values("Số review", ascending=False)
+
+
+def monthly_table(df: pd.DataFrame) -> pd.DataFrame:
+    if df is None or not isinstance(df, pd.DataFrame) or df.empty:
+        return pd.DataFrame()
+    if "Tháng" not in df.columns:
+        return pd.DataFrame()
+    d = df.dropna(subset=["Tháng"])
+    return (d.groupby(["Tháng", "Nguồn"]).size().rename("Số review").reset_index())
+
+
+# ---------------------------------------------------------------- xuất file
+_ILLEGAL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
+
+
+def _clean_for_excel(df: pd.DataFrame) -> pd.DataFrame:
+    if df is None or not isinstance(df, pd.DataFrame):
+        return pd.DataFrame()
+    df = df.copy()
+    for c in df.select_dtypes(include=["object", "string"]).columns:
+        df[c] = df[c].map(lambda v: _ILLEGAL.sub("", v) if isinstance(v, str) else v)
+    return df
+
+
+def to_csv_bytes(df: pd.DataFrame) -> bytes:
+    if df is None or not isinstance(df, pd.DataFrame):
+        return b""
+    return df.to_csv(index=False).encode("utf-8-sig")
+
+
+def to_excel_bytes(sheets: dict[str, pd.DataFrame]) -> bytes:
+    buf = io.BytesIO()
+    with pd.ExcelWriter(buf, engine="openpyxl") as xw:
+        for name, frame in sheets.items():
+            if isinstance(frame, pd.DataFrame):
+                _clean_for_excel(frame).to_excel(xw, sheet_name=name[:31], index=False)
+    return buf.getvalue()
