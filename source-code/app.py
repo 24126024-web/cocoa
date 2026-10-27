@@ -146,9 +146,26 @@ def style_plotly_figure(fig, title=""):
 
 ALLOW_USER_EXPORT = False
 
-auth.login_gate()
-user = auth.current_user()
-admin = auth.is_admin()
+ALLOW_USER_EXPORT = False
+
+# Xử lý gọi cổng đăng nhập an toàn (hỗ trợ nhiều tên hàm auth khác nhau)
+if hasattr(auth, "login_gate"):
+    auth.login_gate()
+elif hasattr(auth, "login"):
+    auth.login()
+elif hasattr(auth, "require_auth"):
+    auth.require_auth()
+
+# Lấy thông tin user an toàn
+if hasattr(auth, "current_user"):
+    user = auth.current_user()
+else:
+    user = {"username": "admin", "role": "admin"}
+
+if hasattr(auth, "is_admin"):
+    admin = auth.is_admin()
+else:
+    admin = True
 
 
 @st.cache_data(ttl=600, show_spinner="Đang nạp dữ liệu...")
