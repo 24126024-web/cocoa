@@ -89,75 +89,162 @@ def _read_table(path: Path) -> pd.DataFrame:
 
 def load_base() -> pd.DataFrame:
     """Gộp review Shopee + Hasaki về một bảng chuẩn."""
-    
-    # =========================================================
-    # 1. XỬ LÝ DỮ LIỆU SHOPEE (Từ file products_final.xlsx)
-    # =========================================================
-    sp = _read_table(PRODUCTS_FILE).reset_index(drop=True)
-    
-    # Chuẩn hóa tên cột: Xóa khoảng trắng thừa ở đầu/cuối tên cột
-    sp.columns = [str(c).strip() for c in sp.columns]
-    
-    # Đổi tên cột lượt bán linh hoạt
-    for col in sp.columns:
-        if "lượt bán" in col.lower():
-            sp = sp.rename(columns={col: "Lượt bán"})
-            break
+    try:
+        # 1. SHOPEE
+        sp = _read_table(PRODUCTS_FILE).reset_index(drop=True)
+        sp.columns = [str(c).strip() for c in sp.columns]
+        
+        for col in sp.columns:
+            if "lượt bán" in col.lower():
+                sp = sp.rename(columns={col: "Lượt bán"})
+                break
 
-    # Lấy ngày đánh giá gần nhất từ Hasaki làm ngày mặc định cho Shopee (để không bị lỡ bộ lọc ngày)
-    hs_raw = _read_table(REVIEWS_FILE)
-    default_date = pd.to_datetime(hs_raw["Ngày review"], errors="coerce").max()
-    if pd.isna(default_date):
-        default_date = pd.Timestamp.now().normalize()
+        # Đọc review Hasaki lấy ngày lớn nhất
+        hs_raw = _read_table(REVIEWS_FILE)
+        default_date = pd.to_datetime(hs_raw["Ngày review"], errors="coerce").max()
+        if pd.isna(default_date):
+            default_date = pd.Timestamp.now().normalize()
 
-    shopee = pd.DataFrame({
-        "rid": [f"SP-{i:05d}" for i in range(len(sp))],
-        "Nguồn": "Shopee",
-        "Mã SP": sp["Mã SP"] if "Mã SP" in sp.columns else sp.index.astype(str),
-        "Tên sản phẩm": sp["Tên sản phẩm"] if "Tên sản phẩm" in sp.columns else "Sản phẩm Shopee",
-        "Giá bán": sp["Giá bán"] if "Giá bán" in sp.columns else pd.NA,
-        "Lượt bán": sp["Lượt bán"] if "Lượt bán" in sp.columns else pd.NA,
-        "Doanh thu 30 ngày": sp["Doanh thu 30 ngày"] if "Doanh thu 30 ngày" in sp.columns else pd.NA,
-        "Số sao": 5,
-        "Nội dung review": "Không có nội dung review (Từ file sản phẩm)",
-        "Ngày review": default_date,
-        "Đã mua hàng": "Có",
-    })
+        shopee = pd.DataFrame({
+            "rid": [f"SP-{i:05d}" for i in range(len(sp))],
+            "Nguồn": "Shopee",
+            "Mã SP": sp["Mã SP"] if "Mã SP" in sp.columns else sp.index.astype(str),
+            "Tên sản phẩm": sp["Tên sản phẩm"] if "Tên sản phẩm" in sp.columns else "Sản phẩm Shopee",
+            "Giá bán": sp["Giá bán"] if "Giá bán" in sp.columns else pd.NA,
+            "Lượt bán": sp["Lượt bán"] if "Lượt bán" in sp.columns else pd.NA,
+            "Doanh thu 30 ngày": sp["Doanh thu 30 ngày"] if "Doanh thu 30 ngày" in sp.columns else pd.NA,
+            "Số sao": 5,
+            "Nội dung review": "Không có nội dung review (Từ file sản phẩm)",
+            "Ngày review": default_date,
+            "Đã mua hàng": "Có",
+        })
 
-    # =========================================================
-    # 2. XỬ LÝ DỮ LIỆU HASAKI (Từ file Reviews_final.xlsx)
-    # =========================================================
-    hs = hs_raw.reset_index(drop=True)
-    hs.columns = [str(c).strip() for c in hs.columns]
-    
-    hasaki = pd.DataFrame({
-        "rid": hs["Review_ID"].astype(str) if "Review_ID" in hs.columns else [f"HS-{i:05d}" for i in range(len(hs))],
-        "Nguồn": "Hasaki",
-        "Mã SP": hs["Mã SP"] if "Mã SP" in hs.columns else pd.NA,
-        "Số sao": hs["Số sao (review)"] if "Số sao (review)" in hs.columns else 5,
-        "Nội dung review": hs["Nội dung review"] if "Nội dung review" in hs.columns else "",
-        "Ngày review": hs["Ngày review"] if "Ngày review" in hs.columns else default_date,
-        "Đã mua hàng": hs["Đã mua hàng"] if "Đã mua hàng" in hs.columns else "Có",
-    })
-    
-    # Merge thông tin sản phẩm từ products_final sang Hasaki
-    hp = sp.drop_duplicates("Mã SP") if "Mã SP" in sp.columns else sp
-    prod_cols = ["Tên sản phẩm", "Giá bán", "Lượt bán", "Doanh thu 30 ngày"]
-    keep = [c for c in ["Mã SP"] + prod_cols if c in hp.columns]
-    
-    if "Mã SP" in hasaki.columns and "Mã SP" in hp.columns:
-        hasaki = hasaki.merge(hp[keep], on="Mã SP", how="left")
-    
-    for c in prod_cols:
-        if c not in hasaki.columns:
-            hasaki[c] = pd.NA
+        # 2. HASAKI
+        hs = hs_raw.reset_index(drop=True)
+        hs.columns = [str(c).strip() for c in hs.columns]
+        
+        hasaki = pd.DataFrame({
+            "rid": hs["Review_ID"].astype(str) if "Review_ID" in hs.columns else [f"HS-{i:05d}" for i in range(len(hs))],
+            "Nguồn": "Hasaki",
+            "Mã SP": hs["Mã SP"] if "Mã SP" in hs.columns else pd.NA,
+            "Số sao": hs["Số sao (review)"] if "Số sao (review)" in hs.columns else 5,
+            "Nội dung review": hs["Nội dung review"] if "Nội dung review" in hs.columns else "",
+            "Ngày review": hs["Ngày review"] if "Ngày review" in hs.columns else default_date,
+            "Đã mua hàng": hs["Đã mua hàng"] if "Đã mua hàng" in hs.columns else "Có",
+        })
+        
+        hp = sp.drop_duplicates("Mã SP") if "Mã SP" in sp.columns else sp
+        prod_cols = ["Tên sản phẩm", "Giá bán", "Lượt bán", "Doanh thu 30 ngày"]
+        keep = [c for c in ["Mã SP"] + prod_cols if c in hp.columns]
+        
+        if "Mã SP" in hasaki.columns and "Mã SP" in hp.columns:
+            hasaki = hasaki.merge(hp[keep], on="Mã SP", how="left")
+        
+        for c in prod_cols:
+            if c not in hasaki.columns:
+                hasaki[c] = pd.NA
+                
+        hasaki["Tên sản phẩm"] = hasaki["Tên sản phẩm"].fillna("Hasaki #" + hasaki["Mã SP"].astype(str))
+
+        # 3. GỘP BẢNG
+        df = pd.concat([shopee, hasaki[shopee.columns]], ignore_index=True)
+        
+        df["Ngày review"] = pd.to_datetime(df["Ngày review"], errors="coerce").dt.normalize()
+        df["Tháng"] = df["Ngày review"].dt.to_period("M").dt.to_timestamp()
+        df["Nội dung review"] = df["Nội dung review"].fillna("").astype(str)
+        
+        for c in ("Giá bán", "Lượt bán", "Doanh thu 30 ngày", "Số sao"):
+            df[c] = pd.to_numeric(df[c], errors="coerce")
             
-    hasaki["Tên sản phẩm"] = hasaki["Tên sản phẩm"].fillna("Hasaki #" + hasaki["Mã SP"].astype(str))
+        df["Hạng mục"] = df["Tên sản phẩm"].map(classify_category)
+        df["Dòng sản phẩm"] = df["Tên sản phẩm"].map(classify_line)
+        df["Cảm xúc"] = df["Số sao"].apply(sentiment_from_star)
+        
+        return df
+    except Exception as e:
+        # Bắt lỗi khẩn cấp để không làm crash Streamlit app
+        print(f"Lỗi load_base: {e}")
+        return pd.DataFrame(columns=["rid", "Nguồn", "Mã SP", "Tên sản phẩm", "Giá bán", "Lượt bán", "Doanh thu 30 ngày", "Số sao", "Nội dung review", "Ngày review", "Đã mua hàng", "Tháng", "Hạng mục", "Dòng sản phẩm", "Cảm xúc"])
 
-    # =========================================================
-    # 3. GỘP LẠI THÀNH 1 BẢNG TỔNG
-    # =========================================================
-    df = pd.concat([shopee, hasaki[shopee.columns]], ignore_index=True)
+# ---------------------------------------------------------------- xóa mềm
+def load_deleted() -> list[dict]:
+    if DELETED_FILE.exists():
+        try:
+            data = json.loads(DELETED_FILE.read_text(encoding="utf-8"))
+            if isinstance(data, list):
+                return [d for d in data if isinstance(d, dict) and "rid" in d]
+        except Exception:
+            return []
+    return []
+
+def delete_rows(rids: list[str], by: str) -> int:
+    log = load_deleted()
+    existing = {d["rid"] for d in log if isinstance(d, dict) and "rid" in d}
+    now = datetime.now().isoformat(timespec="seconds")
+    new = [{"rid": r, "by": by, "at": now} for r in rids if r not in existing]
+    DELETED_FILE.write_text(json.dumps(log + new, ensure_ascii=False, indent=1), encoding="utf-8")
+    return len(new)
+
+def restore_all() -> None:
+    if DELETED_FILE.exists(): 
+        DELETED_FILE.unlink()
+
+def apply_deletions(df: pd.DataFrame) -> pd.DataFrame:
+    # Bảo vệ chống AttributeError nếu df là None hoặc không phải DataFrame
+    if df is None or not isinstance(df, pd.DataFrame) or df.empty:
+        return pd.DataFrame()
     
-    df["Ngày review"] = pd.to_datetime(df["Ngày review"], errors="coerce").dt.normalize()
-    df["Tháng"] = df["Ngày review"].dt.to_
+    if "rid" not in df.columns:
+        return df
+
+    log = load_deleted()
+    gone = {d["rid"] for d in log if isinstance(d, dict) and "rid" in d}
+    return df[~df["rid"].isin(gone)] if gone else df
+
+# ---------------------------------------------------------------- tổng hợp
+def product_table(df: pd.DataFrame) -> pd.DataFrame:
+    if df is None or not isinstance(df, pd.DataFrame) or df.empty: 
+        return pd.DataFrame()
+    g = df.groupby(["Nguồn", "Mã SP", "Tên sản phẩm", "Hạng mục", "Dòng sản phẩm"], observed=True, dropna=False)
+    out = g.agg(**{
+        "Giá bán": ("Giá bán", "first"),
+        "Lượt bán": ("Lượt bán", "first"),
+        "Doanh thu 30 ngày": ("Doanh thu 30 ngày", "first"),
+        "Số review": ("rid", "size"),
+        "Sao TB (review)": ("Số sao", "mean"),
+        "Số review 1★": ("Số sao", lambda s: int((s == 1).sum())),
+        "Số review 5★": ("Số sao", lambda s: int((s == 5).sum())),
+    }).reset_index()
+    out["Sao TB (review)"] = out["Sao TB (review)"].round(2)
+    return out.sort_values("Số review", ascending=False)
+
+def monthly_table(df: pd.DataFrame) -> pd.DataFrame:
+    if df is None or not isinstance(df, pd.DataFrame) or df.empty:
+        return pd.DataFrame()
+    if "Tháng" not in df.columns:
+        return pd.DataFrame()
+    d = df.dropna(subset=["Tháng"])
+    return (d.groupby(["Tháng", "Nguồn"]).size().rename("Số review").reset_index())
+
+# ---------------------------------------------------------------- xuất file
+_ILLEGAL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
+def _clean_for_excel(df: pd.DataFrame) -> pd.DataFrame:
+    if df is None or not isinstance(df, pd.DataFrame):
+        return pd.DataFrame()
+    df = df.copy()
+    for c in df.select_dtypes(include=["object", "string"]).columns:
+        df[c] = df[c].map(lambda v: _ILLEGAL.sub("", v) if isinstance(v, str) else v)
+    return df
+
+def to_csv_bytes(df: pd.DataFrame) -> bytes:
+    if df is None or not isinstance(df, pd.DataFrame):
+        return b""
+    return df.to_csv(index=False).encode("utf-8-sig")
+
+def to_excel_bytes(sheets: dict[str, pd.DataFrame]) -> bytes:
+    buf = io.BytesIO()
+    with pd.ExcelWriter(buf, engine="openpyxl") as xw:
+        for name, frame in sheets.items():
+            if isinstance(frame, pd.DataFrame):
+                _clean_for_excel(frame).to_excel(xw, sheet_name=name[:31], index=False)
+    return buf.getvalue()
