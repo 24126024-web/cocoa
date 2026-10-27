@@ -12,13 +12,14 @@ import pandas as pd
 
 HERE = Path(__file__).resolve().parent
 
+# --- TỰ ĐỘNG DÒ TÌM FILE (Chuẩn cho cả Local và Streamlit Cloud) ---
 def _find_file(filename: str) -> Path:
     search_paths = [
         HERE / filename,
         HERE / "dataset" / filename,
         HERE.parent / filename,
         HERE.parent / "dataset" / filename,
-        HERE.parent / "source-code" / "dataset" / filename,
+        HERE.parent / "source-code" / "dataset" / filename, # Cho Streamlit Cloud
     ]
     for p in search_paths:
         if p.exists():
@@ -31,8 +32,9 @@ REVIEWS_FILE = _find_file("Reviews_final.xlsx")
 DELETED_FILE = HERE / "dataset" / "deleted_rows.json"
 if not DELETED_FILE.parent.exists():
     DELETED_FILE = HERE / "deleted_rows.json"
-
+    
 MODEL_DIR = HERE / "dataset" / "model_outputs"
+
 UNKNOWN_CAT = "Chưa phân loại"
 
 # ---------------------------------------------------------------- phân loại
@@ -59,8 +61,8 @@ def classify_line(name: str) -> str:
         if key in n: return label
     return "Khác"
 
-def sentiment_from_star(s: int) -> str:
-    if pd.isna(s): return pd.NA
+def sentiment_from_star(s) -> str:
+    if pd.isna(s): return "Chưa có đánh giá"
     return "Tích cực" if s >= 4 else ("Trung tính" if s == 3 else "Tiêu cực")
 
 # ---------------------------------------------------------------- nạp dữ liệu
@@ -73,10 +75,10 @@ def _read_table(path: Path) -> pd.DataFrame:
     return pd.read_csv(path) if path.suffix.lower() == ".csv" else pd.read_excel(path)
 
 def load_base() -> pd.DataFrame:
-    """Gộp review Shopee (từ products) + Hasaki (từ reviews) về một bảng chuẩn."""
+    """Gộp review Shopee + Hasaki về một bảng chuẩn."""
     
     # =========================================================
-    # 1. XỬ LÝ DỮ LIỆU SHOPEE (Đọc từ products_final.xlsx)
+    # 1. XỬ LÝ DỮ LIỆU SHOPEE (Từ file products_final.xlsx)
     # =========================================================
     sp = _read_table(PRODUCTS_FILE).reset_index(drop=True)
     sp = sp.rename(columns={"Lượt bán ( 30 ngày)": "Lượt bán"})
@@ -89,15 +91,14 @@ def load_base() -> pd.DataFrame:
         "Giá bán": sp.get("Giá bán", pd.NA),
         "Lượt bán": sp.get("Lượt bán", pd.NA),
         "Doanh thu 30 ngày": sp.get("Doanh thu 30 ngày", pd.NA),
-        # File products không có review nên ta để trống các cột này cho Shopee
-        "Số sao": pd.NA,
-        "Nội dung review": "Không có nội dung review",
-        "Ngày review": pd.NaT,
-        "Đã mua hàng": pd.NA,
+        "Số sao": 5,  # Gán đại 5 sao để không bị bộ lọc sao loại bỏ
+        "Nội dung review": "Không có nội dung review (Từ file sản phẩm)",
+        "Ngày review": pd.Timestamp.now(), # Gán ngày hôm nay để không bị bộ lọc ngày loại bỏ
+        "Đã mua hàng": "Không",
     })
 
     # =========================================================
-    # 2. XỬ LÝ DỮ LIỆU HASAKI (Đọc từ Reviews_final.xlsx)
+    # 2. XỬ LÝ DỮ LIỆU HASAKI (Từ file Reviews_final.xlsx)
     # =========================================================
     hs = _read_table(REVIEWS_FILE).reset_index(drop=True)
     hasaki = pd.DataFrame({
@@ -110,7 +111,7 @@ def load_base() -> pd.DataFrame:
         "Đã mua hàng": hs["Đã mua hàng"],
     })
     
-    # Lấy thông tin sản phẩm từ products_final để merge sang Hasaki
+    # Merge thông tin sản phẩm từ products_final sang Hasaki
     prod_cols = ["Tên sản phẩm", "Giá bán", "Lượt bán", "Doanh thu 30 ngày"]
     hp = _read_table(PRODUCTS_FILE).drop_duplicates("Mã SP").rename(columns={"Lượt bán ( 30 ngày)": "Lượt bán"})
     keep = ["Mã SP"] + [c for c in prod_cols if c in hp.columns]
@@ -121,7 +122,7 @@ def load_base() -> pd.DataFrame:
     hasaki["Tên sản phẩm"] = hasaki["Tên sản phẩm"].fillna("Hasaki #" + hasaki["Mã SP"].astype(str))
 
     # =========================================================
-    # 3. GỘP LẠI THÀNH 1 BẢNG TỔNG (Có cột Nguồn phân biệt)
+    # 3. GỘP LẠI THÀNH 1 BẢNG TỔNG
     # =========================================================
     df = pd.concat([shopee, hasaki[shopee.columns]], ignore_index=True)
     
