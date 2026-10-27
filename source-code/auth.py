@@ -6,7 +6,6 @@ import hashlib
 import hmac
 import os
 from pathlib import Path
-from string import Template
 
 import streamlit as st
 
@@ -50,10 +49,11 @@ def get_image_base64(file_path: str) -> str:
 
 
 def login_gate() -> None:
-    """Hiện giao diện Đăng nhập Cocoon mới; dừng app nếu chưa đăng nhập."""
+    """Hiện giao diện Đăng nhập Cocoon; dừng app nếu chưa đăng nhập."""
     if st.session_state.get("auth"):
         return
 
+    # 1. Lấy danh sách ảnh slideshow (bg13, bg10, bg7, bg3, bg1)
     slideshow_files = [
         str(ASSETS / "bg13.png"),
         str(ASSETS / "bg10.png"),
@@ -61,176 +61,176 @@ def login_gate() -> None:
         str(ASSETS / "bg3.jpg"),
         str(ASSETS / "bg1.jpg")
     ]
-    
     slides_b64 = [get_image_base64(p) for p in slideshow_files if os.path.exists(p)]
     logo_b64 = get_image_base64(str(LOGO))
-
-    js_img_array = str(slides_b64).replace("'", '"')
     first_slide = slides_b64[0] if slides_b64 else ""
+    js_img_array = str(slides_b64).replace("'", '"')
 
-    template = Template("""
+    # 2. Inject CSS định hình giao diện theo đúng mẫu thiết kế
+    custom_css = f"""
     <style>
-        [data-testid="stSidebar"] { display: none !important; }
-        header { display: none !important; }
-        footer { display: none !important; }
+        [data-testid="stSidebar"] {{ display: none !important; }}
+        header {{ display: none !important; }}
+        footer {{ display: none !important; }}
         
-        .stApp {
+        .stApp {{
             background-color: #0d1e16 !important;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
+        }}
 
-        .cocoon-card {
-            width: 950px;
-            height: 550px;
+        /* Khung chứa giao diện trung tâm */
+        .block-container {{
+            max-width: 960px !important;
+            padding-top: 8vh !important;
+            padding-bottom: 0px !important;
+        }}
+
+        /* Bo góc khung đăng nhập chính */
+        div[data-testid="stHorizontalBlock"] {{
             background: #f4efe6;
             border-radius: 28px;
-            display: flex;
-            overflow: hidden;
             box-shadow: 0 25px 50px rgba(0,0,0,0.4);
-            margin: auto;
+            overflow: hidden;
             position: relative;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+        }}
 
-        .card-left {
-            width: 380px;
+        /* Cột trái (Xanh lá Cocoon) */
+        div[data-testid="stColumn"]:nth-child(1) {{
             background-color: #1b4332;
             color: #ffffff;
-            padding: 40px 30px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
+            padding: 40px 30px !important;
             text-align: center;
-            border-top-right-radius: 120px;
-            border-bottom-right-radius: 120px;
+            border-top-right-radius: 110px;
+            border-bottom-right-radius: 110px;
             z-index: 2;
-            position: relative;
-        }
+        }}
 
-        .card-left img.logo {
+        .left-logo {{
             width: 100px;
-            margin-bottom: 25px;
-        }
+            margin-bottom: 20px;
+        }}
 
-        .card-left h1 {
-            font-size: 32px;
+        .left-title {{
+            color: #ffffff !important;
+            font-size: 30px;
             font-weight: 700;
-            margin-bottom: 12px;
-            color: #ffffff;
-            letter-spacing: 0.5px;
-        }
+            margin-bottom: 10px;
+        }}
 
-        .card-left p {
+        .left-desc {{
+            color: rgba(255, 255, 255, 0.85);
             font-size: 13px;
-            line-height: 1.6;
-            opacity: 0.85;
-            margin-bottom: 35px;
-            padding: 0 10px;
-        }
+            line-height: 1.5;
+            margin-bottom: 40px;
+        }}
 
-        .left-badge {
+        .left-badge {{
+            color: rgba(255, 255, 255, 0.6);
             font-size: 10px;
-            letter-spacing: 1.5px;
-            opacity: 0.7;
+            letter-spacing: 1.2px;
             text-transform: uppercase;
-            position: absolute;
-            bottom: 25px;
-        }
+        }}
 
-        .card-right {
-            flex: 1;
-            padding: 40px 50px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
+        /* Cột phải (Form Đăng Nhập & Slideshow) */
+        div[data-testid="stColumn"]:nth-child(2) {{
+            padding: 40px 45px !important;
             position: relative;
-        }
+            background: transparent;
+        }}
 
-        .slideshow-bg-container {
+        .welcome-title {{
+            color: #1b4332;
+            font-size: 40px;
+            font-weight: 800;
+            margin-bottom: 2px;
+        }}
+
+        .welcome-sub {{
+            color: #666666;
+            font-size: 14px;
+            margin-bottom: 25px;
+        }}
+
+        /* Khung ảnh đổi background liên tục 1s */
+        .slide-bg-wrap {{
             position: absolute;
             top: 0;
             right: 0;
             bottom: 0;
-            width: 55%;
-            z-index: 1;
+            width: 50%;
+            z-index: 0;
             pointer-events: none;
             overflow: hidden;
-            border-top-right-radius: 28px;
-            border-bottom-right-radius: 28px;
-        }
+        }}
 
-        .slideshow-img {
+        .slide-bg-img {{
             width: 100%;
             height: 100%;
             object-fit: cover;
-            opacity: 0.35;
+            opacity: 0.3;
             mask-image: linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%);
             -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%);
-            transition: opacity 0.5s ease-in-out;
-        }
+        }}
 
-        .welcome-title {
-            font-size: 42px;
-            font-weight: 800;
-            color: #1b4332;
-            margin-bottom: 5px;
+        /* Styling cho Form Input & Nút bấm */
+        div[data-testid="stForm"] {{
+            border: none !important;
+            padding: 0 !important;
+            background: transparent !important;
+            position: relative;
             z-index: 2;
-        }
+        }}
 
-        .welcome-sub {
-            font-size: 14px;
-            color: #666;
-            margin-bottom: 30px;
-            z-index: 2;
-        }
+        .stButton > button {{
+            background-color: #1b4332 !important;
+            color: #ffffff !important;
+            border-radius: 20px !important;
+            height: 45px !important;
+            font-weight: bold !important;
+            border: none !important;
+            margin-top: 15px;
+        }}
     </style>
+    """
+    st.markdown(custom_css, unsafe_allow_html=True)
 
-    <div class="cocoon-card">
-        <div class="card-left">
-            <img src="$logo_b64" class="logo" alt="Cocoon Logo">
-            <h1>Welcome Back!</h1>
-            <p>To stay connected with us please login with your personal info</p>
-            <div class="left-badge">COCOON ORIGINAL VIETNAM | NATURALLY CRAFTED</div>
-        </div>
+    # 3. Dựng cấu trúc giao diện 2 cột chuẩn Streamlit
+    col_left, col_right = st.columns([4, 5])
 
-        <div class="card-right">
-            <div class="slideshow-bg-container">
-                <img id="cocoonSlide" class="slideshow-img" src="$first_slide" />
+    with col_left:
+        st.markdown(f'<img src="{logo_b64}" class="left-logo">', unsafe_allow_html=True)
+        st.markdown('<div class="left-title">Welcome Back!</div>', unsafe_allow_html=True)
+        st.markdown('<div class="left-desc">To stay connected with us please login with your personal info</div>', unsafe_allow_html=True)
+        st.markdown('<div class="left-badge">COCOON ORIGINAL VIETNAM | NATURALLY CRAFTED</div>', unsafe_allow_html=True)
+
+    with col_right:
+        # Chèn Background Slideshow đổi ảnh mỗi 1s
+        st.markdown(
+            f'''
+            <div class="slide-bg-wrap">
+                <img id="cocoonSlide" class="slide-bg-img" src="{first_slide}">
             </div>
+            <script>
+                const slideImages = {js_img_array};
+                let currentIdx = 0;
+                const imgEl = document.getElementById('cocoonSlide');
+                if (slideImages.length > 0 && imgEl) {{
+                    setInterval(() => {{
+                        currentIdx = (currentIdx + 1) % slideImages.length;
+                        imgEl.src = slideImages[currentIdx];
+                    }}, 1000);
+                }}
+            </script>
+            ''',
+            unsafe_allow_html=True
+        )
 
-            <div class="welcome-title">welcome</div>
-            <div class="welcome-sub">Login in to your account to continue</div>
-        </div>
-    </div>
+        st.markdown('<div class="welcome-title">welcome</div>', unsafe_allow_html=True)
+        st.markdown('<div class="welcome-sub">Login in to your account to continue</div>', unsafe_allow_html=True)
 
-    <script>
-        const slideImages = $js_img_array;
-        let currentIdx = 0;
-        const imgEl = document.getElementById('cocoonSlide');
-
-        if (slideImages.length > 0 && imgEl) {
-            setInterval(() => {
-                currentIdx = (currentIdx + 1) % slideImages.length;
-                imgEl.src = slideImages[currentIdx];
-            }, 1000);
-        }
-    </script>
-    """)
-
-    st.markdown(template.substitute(logo_b64=logo_b64, first_slide=first_slide, js_img_array=js_img_array), unsafe_allow_html=True)
-
-    col_l, col_r = st.columns([1.1, 1])
-    with col_r:
-        st.write("### ")
-        st.write("### ")
         with st.form("cocoon_login_form"):
-            username = st.text_input("Username", placeholder="Username")
-            password = st.text_input("Password", type="password", placeholder="Password")
-            st.write("")
+            username = st.text_input("Username", placeholder="Email / Username", label_visibility="collapsed")
+            password = st.text_input("Password", type="password", placeholder="Password", label_visibility="collapsed")
+            
             submitted = st.form_submit_button("LOG IN", use_container_width=True)
 
             if submitted:
