@@ -187,22 +187,28 @@ line = st.sidebar.selectbox("Dòng sản phẩm", lines)
 if line != "Tất cả":
     df = df[df["Dòng sản phẩm"] == line]
 
-products = ["Tất cả"] + sorted([str(x) for x in df["Tên sản phẩm"].dropna().unique() if str(x).strip()])
-product = st.sidebar.selectbox("Sản phẩm", products)
-if product != "Tất cả":
-    df = df[df["Tên sản phẩm"] == product]
+with g1:
+        # Lấy trực tiếp doanh thu từ bảng prod và ép kiểu số an toàn
+        rev_data = prod.copy()
+        if "Doanh thu 30 ngày" in rev_data.columns:
+            rev_data["Doanh thu 30 ngày"] = pd.to_numeric(rev_data["Doanh thu 30 ngày"], errors="coerce").fillna(0)
+            rev_valid = rev_data[rev_data["Doanh thu 30 ngày"] > 0]
+            pie = rev_valid.groupby("Dòng sản phẩm", as_index=False)["Doanh thu 30 ngày"].sum()
+        else:
+            pie = pd.DataFrame()
 
-stars = st.sidebar.multiselect("Số sao", [1, 2, 3, 4, 5], default=[1, 2, 3, 4, 5])
-if stars and not df.empty:
-    df = df[df["Số sao"].isin(stars)]
-
-if not df.empty and df["Ngày review"].notna().any():
-    valid_dates = df["Ngày review"].dropna()
-    dmin, dmax = valid_dates.min().date(), valid_dates.max().date()
-    if dmin <= dmax:
-        rng = st.sidebar.date_input("Ngày review", (dmin, dmax), min_value=dmin, max_value=dmax)
-        if isinstance(rng, (tuple, list)) and len(rng) == 2:
-            df = df[(df["Ngày review"].dt.date >= rng[0]) & (df["Ngày review"].dt.date <= rng[1])]
+        if not pie.empty and pie["Doanh thu 30 ngày"].sum() > 0:
+            fig = px.pie(
+                pie, 
+                names="Dòng sản phẩm", 
+                values="Doanh thu 30 ngày", 
+                hole=0.45, 
+                color_discrete_sequence=COLOR_DISCRETE
+            )
+            fig = style_plotly_figure(fig, "Cơ cấu doanh thu 30 ngày theo dòng sản phẩm")
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Chưa có dữ liệu doanh thu để vẽ biểu đồ tròn.")
 
 keyword = st.sidebar.text_input("Tìm trong nội dung review")
 if keyword.strip() and not df.empty:
