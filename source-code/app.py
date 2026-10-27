@@ -155,7 +155,7 @@ def fmt_int(x) -> str:
 
 with st.sidebar:
     st.image(str(LOGO_PATH), width=90)
-    st.markdown(f"👤 **{user['username']}** · `{user['role']}`")
+    st.markdown(f" **{user['username']}** · `{user['role']}`")
     if st.button("Đăng xuất"):
         auth.logout()
     st.divider()
