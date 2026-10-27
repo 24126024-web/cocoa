@@ -39,171 +39,150 @@ logo_b64 = get_base64_of_bin_file(LOGO_PATH)
 # -----------------------------------------------------------------------------
 # 2. XỬ LÝ ĐĂNG NHẬP / TÙY CHỈNH GIAO DIỆN SIGN IN CHUẨN DESIGN SYSTEM
 # -----------------------------------------------------------------------------
-# Kiểm tra nếu chưa đăng nhập -> Hiển thị Form Đăng Nhập Tùy Chỉnh
 if not st.session_state.get("authenticated", False):
     st.markdown(f"""
     <style>
-    /* Ẩn Header, Footer & Sidebar khi ở màn hình đăng nhập */
+    /* Ẩn Sidebar & Header/Footer mặc định của Streamlit */
     [data-testid="stSidebar"] {{ display: none !important; }}
     header {{ visibility: hidden !important; }}
     footer {{ visibility: hidden !important; }}
     
     .stApp {{
-        background: #111e16 !important;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        font-family: 'Plus Jakarta Sans', sans-serif;
+        background-color: #111e16 !important;
+        font-family: 'Plus Jakarta Sans', sans-serif !important;
     }}
     
-    /* Login Wrapper (Container 2 cột) */
-    .login-wrapper {{
-        display: flex;
-        width: 880px;
-        max-width: 95vw;
-        min-height: 500px;
+    /* Container Đăng nhập chính dạng Card */
+    div[data-testid="stVerticalBlock"] > div.element-container:has(.login-card-marker) + div {{
         background: #F8F5EE;
         border-radius: 24px;
-        overflow: hidden;
         box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-        margin: auto;
     }}
     
-    /* Khung Bên Trái: Banner / Branding Panel */
-    .login-left {{
-        flex: 1;
+    /* Khung Bên Trái: Banner Banner Branding */
+    .login-left-card {{
         background: linear-gradient(135deg, #1A4D2E 0%, #11331E 100%);
-        padding: 40px;
+        border-radius: 20px;
+        padding: 40px 25px;
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: center;
         color: #FFFFFF;
         text-align: center;
-        position: relative;
+        height: 100%;
+        min-height: 450px;
     }}
-    
-    .login-left img.logo {{
-        width: 110px;
+    .login-left-card img {{
+        width: 100px;
         margin-bottom: 20px;
-        filter: drop-shadow(0px 4px 8px rgba(0,0,0,0.3));
     }}
-    
-    .login-left h2 {{
-        font-size: 26px;
+    .login-left-card h2 {{
+        color: #FFFFFF !important;
+        font-size: 24px;
         font-weight: 700;
         margin-bottom: 10px;
-        color: #FFFFFF !important;
     }}
-    
-    .login-left p {{
-        font-size: 13.5px;
+    .login-left-card p {{
         color: #D1E2D6;
+        font-size: 13px;
         margin-bottom: 25px;
-        line-height: 1.5;
     }}
-    
     .btn-outline-signin {{
         border: 1.5px solid #FFFFFF;
         background: transparent;
         color: #FFFFFF;
-        padding: 8px 30px;
+        padding: 8px 25px;
         border-radius: 20px;
-        font-weight: 600;
         font-size: 13px;
+        font-weight: 600;
         letter-spacing: 1px;
     }}
     
-    .brand-footer {{
-        position: absolute;
-        bottom: 20px;
-        font-size: 10px;
-        letter-spacing: 1px;
-        color: rgba(255,255,255,0.6);
-    }}
-
     /* Khung Bên Phải: Form Đăng Nhập */
-    .login-right-container {{
-        flex: 1.1;
-        background: #F8F5EE;
-        padding: 45px 40px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
+    .login-right-card {{
+        padding: 20px 30px;
     }}
-    
-    .login-right-container h1 {{
+    .login-title {{
         color: #1A4D2E !important;
-        font-size: 30px;
+        font-size: 32px;
         font-weight: 700;
-        margin-bottom: 4px;
+        margin-bottom: 2px;
         text-transform: lowercase;
     }}
-    
-    .login-right-container p.sub-title {{
+    .login-subtitle {{
         color: #666666;
         font-size: 13.5px;
         margin-bottom: 25px;
     }}
     
-    /* Style cho Ô nhập liệu */
+    /* Custom Ô nhập liệu và Nút đăng nhập của Streamlit */
     div[data-baseweb="input"] {{
         background-color: #FFFFFF !important;
         border: 1px solid #2E6F40 !important;
         border-radius: 12px !important;
     }}
-    
     div[data-baseweb="input"] input {{
         color: #1A4D2E !important;
     }}
-    
-    /* Style cho Nút Bấm Đăng Nhập */
     .stButton > button {{
         background: #1A4D2E !important;
         color: #FFFFFF !important;
         border-radius: 22px !important;
         padding: 10px 0 !important;
         font-weight: 700 !important;
-        font-size: 14px !important;
+        font-size: 15px !important;
         border: none !important;
         width: 100% !important;
         box-shadow: 0 4px 12px rgba(26, 77, 46, 0.3) !important;
-        transition: all 0.3s ease !important;
+        margin-top: 10px;
     }}
-    
     .stButton > button:hover {{
         background: #11331E !important;
-        box-shadow: 0 6px 16px rgba(26, 77, 46, 0.4) !important;
     }}
     </style>
     """, unsafe_allow_html=True)
 
-    c_left, c_mid, c_right = st.columns([1, 8, 1])
-    with c_mid:
-        st.markdown(f"""
-        <div class="login-wrapper">
-            <div class="login-left">
-                {'<img src="data:image/png;base64,' + logo_b64 + '" class="logo"/>' if logo_b64 else '🌿'}
-                <h2>Welcome Back!</h2>
-                <p>To stay connected with us please login with your personal info</p>
-                <div class="btn-outline-signin">SIGN IN</div>
-                <div class="brand-footer">COCOON ORIGINAL VIETNAM | NATURALLY CRAFTED</div>
-            </div>
-            <div class="login-right-container">
-                <h1>welcome</h1>
-                <p class="sub-title">Login in to your account to continue</p>
-        """, unsafe_allow_html=True)
-        
-        # Form đăng nhập tương thích với auth.py
-        auth.login_gate()
+    # Đưa màn hình vào giữa trang bằng Layout Columns
+    _, main_col, _ = st.columns([1, 10, 1])
+    
+    with main_col:
+        # Bọc khung container Đăng Nhập
+        with st.container():
+            st.markdown('<div class="login-card-marker"></div>', unsafe_allow_html=True)
+            col_left, col_right = st.columns([1, 1.1], gap="large")
+            
+            # Cột Trái (Banner Cocoon)
+            with col_left:
+                st.markdown(f"""
+                <div class="login-left-card">
+                    {'<img src="data:image/png;base64,' + logo_b64 + '"/>' if logo_b64 else '🌿'}
+                    <h2>Welcome Back!</h2>
+                    <p>To stay connected with us please login with your personal info</p>
+                    <div class="btn-outline-signin">SIGN IN</div>
+                    <div style="margin-top: 40px; font-size: 10px; opacity: 0.6; letter-spacing: 1px;">
+                        COCOON ORIGINAL VIETNAM | NATURALLY CRAFTED
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
 
-        st.markdown("""
+            # Cột Phải (Form Đăng nhập auth.py)
+            with col_right:
+                st.markdown("""
+                <div class="login-right-card">
+                    <div class="login-title">welcome</div>
+                    <div class="login-subtitle">Login in to your account to continue</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Gọi hàm login chính chủ của file auth.py
+                auth.login_gate()
+                
+                st.markdown("""
                 <div style="text-align: center; margin-top: 15px; font-size: 13px; color: #666666;">
                     Don't have an account? <a href="#" style="color: #1A4D2E; font-weight: 700; text-decoration: none;">Sign up</a>
                 </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
     st.stop()
 
 # -----------------------------------------------------------------------------
