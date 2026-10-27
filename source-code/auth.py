@@ -11,7 +11,7 @@ import streamlit as st
 
 MAX_ATTEMPTS = 5
 
-# TỰ ĐỘNG TÌM ĐÚNG THƯ MỤC ASSETS (DÙ Ở TRONG SOURCE-CODE HOẶC NGOÀI)
+# TỰ ĐỘNG TÌM ĐÚNG THƯ MỤC ASSETS
 CURRENT_DIR = Path(__file__).resolve().parent
 if (CURRENT_DIR / "assets").exists():
     ASSETS = CURRENT_DIR / "assets"
@@ -63,17 +63,15 @@ def login_gate() -> None:
     if st.session_state.get("auth"):
         return
 
-    # Lấy base64 của ảnh logo và ảnh nền bg1.jpg (hoặc bg1.png / bg13.png)
+    # Lấy base64 của ảnh logo và ảnh bg1.jpg
     bg1_file = ASSETS / "bg1.jpg"
     if not bg1_file.exists():
         bg1_file = ASSETS / "bg1.png"
-    if not bg1_file.exists():
-        bg1_file = ASSETS / "bg13.png"
 
     bg1_b64 = get_image_base64(bg1_file)
     logo_b64 = get_image_base64(LOGO)
 
-    # CSS dựng bộ khung chuẩn giao diện bo góc & lớp ảnh nền chìm đằng sau
+    # CSS chỉnh cho ảnh nền phủ toàn bộ mảng màu trắng bên phải
     custom_css = f"""
     <style>
         [data-testid="stSidebar"] {{ display: none !important; }}
@@ -142,14 +140,14 @@ def login_gate() -> None:
             text-transform: uppercase;
         }}
 
-        /* Cột phải - Chứa Form & Hình nền bg1 chìm đằng sau */
+        /* Cột phải - Phủ tràn toàn bộ ảnh bg1 trên mảng màu trắng */
         div[data-testid="stColumn"]:nth-child(2) {{
             padding: 40px 45px !important;
             position: relative;
-            background-image: url('{bg1_b64}') !important;
+            background-image: linear-gradient(rgba(244, 239, 230, 0.55), rgba(244, 239, 230, 0.55)), url('{bg1_b64}') !important;
             background-repeat: no-repeat !important;
-            background-position: bottom right !important;
-            background-size: 280px auto !important;
+            background-position: center !important;
+            background-size: cover !important;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -163,9 +161,10 @@ def login_gate() -> None:
         }}
 
         .welcome-sub {{
-            color: #666666;
+            color: #333333;
             font-size: 13px;
             margin-bottom: 25px;
+            font-weight: 500;
         }}
 
         /* Styling Form Streamlit */
