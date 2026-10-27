@@ -13,12 +13,14 @@ import pandas as pd
 HERE = Path(__file__).resolve().parent
 
 # --- TỰ ĐỘNG DÒ TÌM FILE ---
+# --- TỰ ĐỘNG DÒ TÌM FILE (SỬA LỖI ĐƯỜNG DẪN TRÊN CLOUD) ---
 def _find_file(filename: str) -> Path:
     search_paths = [
         HERE / filename,
         HERE / "dataset" / filename,
         HERE.parent / filename,
         HERE.parent / "dataset" / filename,
+        HERE.parent / "source-code" / "dataset" / filename, # Thêm đường dẫn này để tìm đúng thư mục trên Cloud
     ]
     for p in search_paths:
         if p.exists():
