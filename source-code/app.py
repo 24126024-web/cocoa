@@ -5,9 +5,6 @@ Chạy:  streamlit run app.py
 from __future__ import annotations
 
 import os
-import base64
-from pathlib import Path
-from string import Template
 
 import pandas as pd
 from PIL import Image
@@ -19,266 +16,35 @@ import auth
 import data_utils as du
 
 LOGO_PATH = auth.LOGO
-st.set_page_config(
-    page_title="Cocoon Analytics",
-    page_icon=Image.open(LOGO_PATH),
-    layout="wide"
-)
+st.set_page_config(page_title="Cocoon Analytics", page_icon=Image.open(LOGO_PATH) if LOGO_PATH.exists() else None, layout="wide")
 
 # Đặt True nếu muốn tài khoản User cũng được tải file (mặc định: chỉ Admin).
 ALLOW_USER_EXPORT = False
 
-# ==============================================================================
-# HÀM HỖ TRỢ CHUYỂN ĐỔI ẢNH THÀNH BASE64 DÙNG CHO HTML/CSS
-# ==============================================================================
-def get_image_base64(file_path: str) -> str:
-    """Đọc file ảnh và chuyển thành chuỗi Data URI Base64."""
-    if os.path.exists(file_path):
-        with open(file_path, "rb") as f:
-            data = f.read()
-        ext = Path(file_path).suffix.lower().replace(".", "")
-        if ext == "jpg":
-            ext = "jpeg"
-        return f"data:image/{ext};base64,{base64.b64encode(data).decode()}"
-    return ""
+# Gọi hàm hiển thị Sign in Cocoon
+auth.login_gate()
 
-# ==============================================================================
-# GIAO DIỆN SIGN IN CUSTOM THEO MẪU THIẾT KẾ COCOON
-# ==============================================================================
-def render_cocoon_login():
-    slideshow_files = [
-        "assets/bg13.png",
-        "assets/bg10.png",
-        "assets/bg7.png",
-        "assets/bg3.jpg",
-        "assets/bg1.jpg"
-    ]
-    
-    slides_b64 = [get_image_base64(p) for p in slideshow_files if os.path.exists(p)]
-    logo_b64 = get_image_base64(str(LOGO_PATH))
+user = auth.current_user()
+admin = auth.is_admin()
 
-    js_img_array = str(slides_b64).replace("'", '"')
-    first_slide = slides_b64[0] if slides_b64 else ""
 
-    template = Template("""
-    <style>
-        [data-testid="stSidebar"] { display: none; }
-        header { display: none !important; }
-        footer { display: none !important; }
-        
-        .stApp {
-            background-color: #0d1e16;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-
-        .cocoon-card {
-            width: 950px;
-            height: 550px;
-            background: #f4efe6;
-            border-radius: 28px;
-            display: flex;
-            overflow: hidden;
-            box-shadow: 0 25px 50px rgba(0,0,0,0.4);
-            margin: auto;
-            position: relative;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        .card-left {
-            width: 380px;
-            background-color: #1b4332;
-            color: #ffffff;
-            padding: 40px 30px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            border-top-right-radius: 120px;
-            border-bottom-right-radius: 120px;
-            z-index: 2;
-            position: relative;
-        }
-
-        .card-left img.logo {
-            width: 100px;
-            margin-bottom: 25px;
-        }
-
-        .card-left h1 {
-            font-size: 32px;
-            font-weight: 700;
-            margin-bottom: 12px;
-            color: #ffffff;
-            letter-spacing: 0.5px;
-        }
-
-        .card-left p {
-            font-size: 13px;
-            line-height: 1.6;
-            opacity: 0.85;
-            margin-bottom: 35px;
-            padding: 0 10px;
-        }
-
-        .left-badge {
-            font-size: 10px;
-            letter-spacing: 1.5px;
-            opacity: 0.7;
-            text-transform: uppercase;
-            position: absolute;
-            bottom: 25px;
-        }
-
-        .card-right {
-            flex: 1;
-            padding: 40px 50px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            position: relative;
-        }
-
-        .slideshow-bg-container {
-            position: absolute;
-            top: 0;
-            right: 0;
-            bottom: 0;
-            width: 55%;
-            z-index: 1;
-            pointer-events: none;
-            overflow: hidden;
-            border-top-right-radius: 28px;
-            border-bottom-right-radius: 28px;
-        }
-
-        .slideshow-img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            opacity: 0.35;
-            mask-image: linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%);
-            -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%);
-            transition: opacity 0.5s ease-in-out;
-        }
-
-        .welcome-title {
-            font-size: 42px;
-            font-weight: 800;
-            color: #1b4332;
-            margin-bottom: 5px;
-            z-index: 2;
-        }
-
-        .welcome-sub {
-            font-size: 14px;
-            color: #666;
-            margin-bottom: 30px;
-            z-index: 2;
-        }
-    </style>
-
-    <div class="cocoon-card">
-        <div class="card-left">
-            <img src="$logo_b64" class="logo" alt="Cocoon Logo">
-            <h1>Welcome Back!</h1>
-            <p>To stay connected with us please login with your personal info</p>
-            <div class="left-badge">COCOON ORIGINAL VIETNAM | NATURALLY CRAFTED</div>
-        </div>
-
-        <div class="card-right">
-            <div class="slideshow-bg-container">
-                <img id="cocoonSlide" class="slideshow-img" src="$first_slide" />
-            </div>
-
-            <div class="welcome-title">welcome</div>
-            <div class="welcome-sub">Login in to your account to continue</div>
-        </div>
-    </div>
-
-    <script>
-        const slideImages = $js_img_array;
-        let currentIdx = 0;
-        const imgEl = document.getElementById('cocoonSlide');
-
-        if (slideImages.length > 0 && imgEl) {
-            setInterval(() => {
-                currentIdx = (currentIdx + 1) % slideImages.length;
-                imgEl.src = slideImages[currentIdx];
-            }, 1000);
-        }
-    </script>
-    """)
-
-    login_html = template.substitute(
-        logo_b64=logo_b64,
-        first_slide=first_slide,
-        js_img_array=js_img_array
-    )
-
-    st.markdown(login_html, unsafe_allow_html=True)
-
-    # Form nhập thông tin Đăng nhập
-    col_l, col_r = st.columns([1.1, 1])
-    with col_r:
-        st.write("### ")
-        st.write("### ")
-        with st.form("cocoon_login_form"):
-            username = st.text_input("Email / Tên tài khoản", placeholder="Nhập tài khoản...")
-            password = st.text_input("Mật khẩu", type="password", placeholder="Nhập mật khẩu...")
-            
-            st.write("")
-            submitted = st.form_submit_button("LOG IN", use_container_width=True)
-
-            if submitted:
-                login_success = False
-                if hasattr(auth, "check_login_credentials"):
-                    login_success = auth.check_login_credentials(username, password)
-                elif hasattr(auth, "login"):
-                    login_success = auth.login(username, password)
-                else:
-                    st.session_state["user"] = {"username": username, "role": "admin"}
-                    login_success = True
-
-                if login_success:
-                    st.success("Đăng nhập thành công!")
-                    st.rerun()
-                else:
-                    st.error("Tên đăng nhập hoặc mật khẩu không chính xác.")
-
-# QUẢN LÝ LUỒNG ĐĂNG NHẬP
-user = auth.current_user() if hasattr(auth, "current_user") else st.session_state.get("user")
-
-if not user:
-    render_cocoon_login()
-    st.stop()
-
-admin = auth.is_admin() if hasattr(auth, "is_admin") else (user.get("role") == "admin")
-
-# ==============================================================================
-# PHẦN GIAO DIỆN BÊN TRONG SAU KHU SIGN IN (GIỮ NGUYÊN CODE CỦA BẠN)
-# ==============================================================================
 @st.cache_data(show_spinner="Đang nạp dữ liệu…")
 def get_base(signature: tuple) -> pd.DataFrame:
     return du.load_base()
 
+
 base = du.apply_deletions(get_base(du.data_signature()))
+
 
 def fmt_int(x) -> str:
     return "—" if pd.isna(x) else f"{int(x):,}".replace(",", ".")
+
 
 with st.sidebar:
     st.image(str(LOGO_PATH), width=90)
     st.markdown(f"👤 **{user['username']}** · `{user['role']}`")
     if st.button("Đăng xuất"):
-        if hasattr(auth, "logout"):
-            auth.logout()
-        else:
-            st.session_state.clear()
-            st.rerun()
+        auth.logout()
     st.divider()
     st.header("Bộ lọc")
 
@@ -332,6 +98,7 @@ if admin:
     tab_names.append("🔧 Quản trị")
 tabs = st.tabs(tab_names)
 
+
 with tabs[0]:
     k1, k2, k3, k4, k5 = st.columns(5)
     k1.metric("Số sản phẩm", fmt_int(len(prod)))
@@ -381,106 +148,55 @@ with tabs[0]:
     with g1:
         pie = rev.groupby("Dòng sản phẩm")["Doanh thu 30 ngày"].sum().reset_index()
         if len(pie):
-            fig = px.pie(
-                pie,
-                names="Dòng sản phẩm",
-                values="Doanh thu 30 ngày",
-                hole=0.35,
-                title="Cơ cấu doanh thu 30 ngày theo dòng sản phẩm"
-            )
+            fig = px.pie(pie, names="Dòng sản phẩm", values="Doanh thu 30 ngày", hole=0.35, title="Cơ cấu doanh thu 30 ngày theo dòng sản phẩm")
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("Chưa có dữ liệu doanh thu để vẽ biểu đồ tròn.")
 
     with g2:
         mt = du.monthly_table(df)
-        fig = px.line(
-            mt,
-            x="Tháng",
-            y="Số review",
-            color="Nguồn",
-            markers=True,
-            title="Xu hướng số lượng review theo tháng"
-        )
+        fig = px.line(mt, x="Tháng", y="Số review", color="Nguồn", markers=True, title="Xu hướng số lượng review theo tháng")
         st.plotly_chart(fig, use_container_width=True)
 
     g3, g4 = st.columns(2)
     with g3:
         dist = df.groupby(["Số sao", "Nguồn"]).size().reset_index(name="Số review")
-        fig = px.bar(
-            dist,
-            x="Số sao",
-            y="Số review",
-            color="Nguồn",
-            barmode="group",
-            title="Phân bố số sao"
-        )
+        fig = px.bar(dist, x="Số sao", y="Số review", color="Nguồn", barmode="group", title="Phân bố số sao")
         st.plotly_chart(fig, use_container_width=True)
     with g4:
         top = prod.nlargest(10, "Số review")
-        fig = px.bar(
-            top,
-            x="Số review",
-            y="Tên sản phẩm",
-            orientation="h",
-            title="Top 10 sản phẩm theo số review"
-        )
+        fig = px.bar(top, x="Số review", y="Tên sản phẩm", orientation="h", title="Top 10 sản phẩm theo số review")
         fig.update_layout(yaxis={"categoryorder": "total ascending"})
         st.plotly_chart(fig, use_container_width=True)
+
 
 with tabs[1]:
     st.subheader("Bảng sản phẩm")
     st.dataframe(prod, use_container_width=True, hide_index=True)
     st.subheader("Bảng review")
-    show = [
-        "Nguồn", "Mã SP", "Tên sản phẩm", "Hạng mục",
-        "Số sao", "Cảm xúc", "Nội dung review", "Ngày review", "Đã mua hàng"
-    ]
-    st.dataframe(
-        df[show].sort_values("Ngày review", ascending=False).head(2000),
-        use_container_width=True, hide_index=True
-    )
+    show = ["Nguồn", "Mã SP", "Tên sản phẩm", "Hạng mục", "Số sao", "Cảm xúc", "Nội dung review", "Ngày review", "Đã mua hàng"]
+    st.dataframe(df[show].sort_values("Ngày review", ascending=False).head(2000), use_container_width=True, hide_index=True)
     if len(df) > 2000:
         st.caption("Hiển thị 2.000 review mới nhất; bản xuất file (Admin) chứa đầy đủ.")
 
     st.subheader("Kết xuất báo cáo")
     if admin or ALLOW_USER_EXPORT:
         summary = pd.DataFrame({
-            "Chỉ số": [
-                "Số review", "Số sản phẩm", "Sao trung bình",
-                "% tích cực (4-5★)", "% tiêu cực (1-2★)"
-            ],
-            "Giá trị": [
-                len(df), len(prod), round(df["Số sao"].mean(), 2),
-                round((df["Số sao"] >= 4).mean() * 100, 1),
-                round((df["Số sao"] <= 2).mean() * 100, 1)
-            ],
+            "Chỉ số": ["Số review", "Số sản phẩm", "Sao trung bình", "% tích cực (4-5★)", "% tiêu cực (1-2★)"],
+            "Giá trị": [len(df), len(prod), round(df["Số sao"].mean(), 2), round((df["Số sao"] >= 4).mean() * 100, 1), round((df["Số sao"] <= 2).mean() * 100, 1)],
         })
         d1, d2, d3 = st.columns(3)
-        d1.download_button(
-            "⬇️ Review (CSV)",
-            du.to_csv_bytes(df.drop(columns=["rid", "Tháng"])),
-            "cocoon_reviews.csv",
-            "text/csv"
-        )
-        d2.download_button(
-            "⬇️ Sản phẩm (CSV)",
-            du.to_csv_bytes(prod),
-            "cocoon_products.csv",
-            "text/csv"
-        )
+        d1.download_button("⬇️ Review (CSV)", du.to_csv_bytes(df.drop(columns=["rid", "Tháng"])), "cocoon_reviews.csv", "text/csv")
+        d2.download_button("⬇️ Sản phẩm (CSV)", du.to_csv_bytes(prod), "cocoon_products.csv", "text/csv")
         d3.download_button(
             "⬇️ Báo cáo (Excel)",
-            du.to_excel_bytes({
-                "Tóm tắt": summary,
-                "Sản phẩm": prod,
-                "Review": df.drop(columns=["rid", "Tháng"])
-            }),
+            du.to_excel_bytes({"Tóm tắt": summary, "Sản phẩm": prod, "Review": df.drop(columns=["rid", "Tháng"])}),
             "cocoon_report.xlsx",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
     else:
         st.info("Chỉ tài khoản Admin được tải dữ liệu.")
+
 
 with tabs[2]:
     st.subheader("Dashboard Power BI")
@@ -490,11 +206,7 @@ with tabs[2]:
     except Exception:
         pass
     if admin:
-        url = st.text_input(
-            "Link nhúng Power BI (Publish to web)",
-            value=url,
-            help="Có thể đặt cố định trong secrets.toml → POWERBI_EMBED_URL"
-        )
+        url = st.text_input("Link nhúng Power BI (Publish to web)", value=url, help="Có thể đặt cố định trong secrets.toml → POWERBI_EMBED_URL")
     if url and url.startswith("https://"):
         components.iframe(url, height=720, scrolling=True)
     else:
@@ -505,6 +217,7 @@ with tabs[2]:
             "3. Dán vào `POWERBI_EMBED_URL` trong `.streamlit/secrets.toml` (hoặc ô nhập ở trên, nếu là Admin).\n\n"
             "Lưu ý: *Publish to web* công khai báo cáo với bất kỳ ai có link."
         )
+
 
 with tabs[3]:
     st.subheader("Kết quả mô hình (Giai đoạn 4)")
@@ -523,6 +236,7 @@ with tabs[3]:
                 st.dataframe(pd.read_csv(p), use_container_width=True, hide_index=True)
     if not found:
         st.info("Chưa có file kết quả. Tên file mong đợi: " + ", ".join(f"`{k}`" for k in expected))
+
 
 if admin:
     with tabs[4]:
