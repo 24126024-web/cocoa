@@ -119,7 +119,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# BẢNG MÀU CHUẨN COCOON / HASAKI / SHOPEE
 COLOR_DISCRETE = ["#1b4332", "#2d6a4f", "#40916c", "#52b788", "#74c69d", "#b7e4c7"]
 MAP_SOURCES = {"Shopee": "#ee4d2d", "Hasaki": "#117a50"}
 
@@ -140,7 +139,6 @@ def style_plotly_figure(fig, title=""):
 
 ALLOW_USER_EXPORT = False
 
-# Gọi cổng đăng nhập
 auth.login_gate()
 user = auth.current_user()
 admin = auth.is_admin()
@@ -158,7 +156,6 @@ def fmt_int(x) -> str:
     return "—" if pd.isna(x) else f"{int(x):,}".replace(",", ".")
 
 
-# --- SIDEBAR & BỘ LỌC AN TOÀN ---
 with st.sidebar:
     if LOGO_PATH.exists():
         st.image(str(LOGO_PATH), width=90)
@@ -184,3 +181,108 @@ if not df.empty and "Dòng sản phẩm" in df.columns:
         df = df[df["Dòng sản phẩm"] == line]
 
 if not df.empty and "Tên sản phẩm" in df.columns:
+    prods = ["Tất cả"] + sorted([str(x) for x in df["Tên sản phẩm"].dropna().unique() if str(x).strip()])
+    product = st.sidebar.selectbox("Sản phẩm", prods)
+    if product != "Tất cả":
+        df = df[df["Tên sản phẩm"] == product]
+
+if not df.empty and "Số sao" in df.columns:
+    stars = st.sidebar.multiselect("Số sao", [1, 2, 3, 4, 5], default=[1, 2, 3, 4, 5])
+    df = df[df["Số sao"].isin(stars)]
+
+if not df.empty and "Ngày review" in df.columns and df["Ngày review"].notna().any():
+    valid_dates = df["Ngày review"].dropna()
+    dmin, dmax = valid_dates.min().date(), valid_dates.max().date()
+    if dmin <= dmax:
+        rng = st.sidebar.date_input("Ngày review", (dmin, dmax), min_value=dmin, max_value=dmax)
+        if isinstance(rng, (tuple, list)) and len(rng) == 2:
+            df = df[(df["Ngày review"].dt.date >= rng[0]) & (df["Ngày review"].dt.date <= rng[1])]
+
+keyword = st.sidebar.text_input("Tìm trong nội dung review")
+if keyword.strip() and not df.empty:
+    df = df[df["Nội dung review"].str.contains(keyword.strip(), case=False, na=False, regex=False)]
+
+st.sidebar.caption(f"{len(df):,} / {len(base):,} review sau khi lọc".replace(",", "."))
+if admin:
+    st.sidebar.caption("📁 Dữ liệu: Đã tải")
+
+h1, h2 = st.columns([1, 12], vertical_alignment="center")
+if LOGO_PATH.exists():
+    h1.image(str(LOGO_PATH), width=70)
+h2.title("Cocoon Analytics")
+st.caption("Phân tích hành vi người tiêu dùng và phản hồi khách hàng — Shopee & Hasaki")
+
+if df.empty:
+    st.warning("Không có dữ liệu phù hợp với bộ lọc hiện tại.")
+    st.stop()
+
+prod = du.product_table(df)
+tab_names = ["📊 Tổng quan", "🗂️ Dữ liệu", "📈 Power BI", "🤖 Kết quả mô hình"]
+if admin:
+    tab_names.append("🔧 Quản trị")
+tabs = st.tabs(tab_names)
+
+with tabs[0]:
+    k1, k2, k3, k4, k5 = st.columns(5)
+    k1.metric("Số sản phẩm", fmt_int(len(prod)))
+    k2.metric("Số review", fmt_int(len(df)))
+    k3.metric("Sao trung bình", f"{df['Số sao'].mean():.2f}" if not df.empty else "0")
+    k4.metric("Tỉ lệ tích cực (4–5★)", f"{(df['Số sao'] >= 4).mean():.1%}" if not df.empty else "0%")
+    k5.metric("Tỉ lệ tiêu cực (1–2★)", f"{(df['Số sao'] <= 2).mean():.1%}" if not df.empty else "0%")
+
+    st.write("")
+    st.subheader("Thống kê Min – Max")
+    c1, c2, c3 = st.columns(3)
+
+    def top_product(star: int):
+        s = df[df["Số sao"] == star].groupby("Tên sản phẩm").size()
+        return (s.idxmax(), int(s.max())) if len(s) else (None, 0)
+
+    p5, n5 = top_product(5)
+    p1, n1 = top_product(1)
+    with c1:
+        st.markdown("**Sản phẩm được 5★ nhiều nhất**")
+        st.write(f"{p5} — {n5} lượt" if p5 else "Không có dữ liệu")
+        st.markdown("**Sản phẩm bị 1★ nhiều nhất**")
+        st.write(f"{p1} — {n1} lượt" if p1 else "Không có review 1★ trong bộ lọc")
+
+    monthly_all = df.dropna(subset=["Tháng"]).groupby("Tháng").size()
+    with c2:
+        st.markdown("**Tháng nhiều review nhất**")
+        if len(monthly_all):
+            st.write(f"{monthly_all.idxmax():%m/%Y} — {int(monthly_all.max())} review")
+            st.markdown("**Tháng ít review nhất**")
+            st.write(f"{monthly_all.idxmin():%m/%Y} — {int(monthly_all.min())} review")
+        else:
+            st.write("Chưa có thông tin tháng.")
+        st.caption("Dữ liệu dùng số review làm thước đo xu hướng mua.")
+
+    rev = prod.dropna(subset=["Doanh thu 30 ngày"])
+    rev = rev[rev["Doanh thu 30 ngày"] > 0]
+    with c3:
+        if len(rev):
+            hi = rev.loc[rev["Doanh thu 30 ngày"].idxmax()]
+            lo = rev.loc[rev["Doanh thu 30 ngày"].idxmin()]
+            st.markdown("**Sản phẩm doanh thu 30 ngày cao nhất**")
+            st.write(f"{hi['Tên sản phẩm']} — {fmt_int(hi['Doanh thu 30 ngày'])} ₫")
+            st.markdown("**Sản phẩm doanh thu 30 ngày thấp nhất**")
+            st.write(f"{lo['Tên sản phẩm']} — {fmt_int(lo['Doanh thu 30 ngày'])} ₫")
+        else:
+            st.markdown("**Doanh thu 30 ngày**")
+            st.write("Không có dữ liệu doanh thu.")
+
+    st.write("")
+    st.subheader("Biểu đồ phân tích")
+    g1, g2 = st.columns(2)
+
+    with g1:
+        pie = rev.groupby("Dòng sản phẩm")["Doanh thu 30 ngày"].sum().reset_index() if not rev.empty else pd.DataFrame()
+        if len(pie):
+            fig = px.pie(
+                pie, 
+                names="Dòng sản phẩm", 
+                values="Doanh thu 30 ngày", 
+                hole=0.45, 
+                color_discrete_sequence=COLOR_DISCRETE
+            )
+            fig = style_plotly_figure(fig, "Cơ cấu doanh thu 30 ngày theo dòng sản phẩm
