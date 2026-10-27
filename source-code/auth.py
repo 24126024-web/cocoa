@@ -20,7 +20,8 @@ elif (CURRENT_DIR.parent / "assets").exists():
 else:
     ASSETS = CURRENT_DIR / "assets"
 
-LOGO = ASSETS / "logo.png" if (ASSETS / "logo.png").exists() else ASSETS / "logo.png"
+# ĐỔI ƯU TIÊN: Dùng logo1.png trước, nếu không thấy mới dùng logo.png
+LOGO = ASSETS / "logo1.png" if (ASSETS / "logo1.png").exists() else ASSETS / "logo.png"
 
 
 def _h(pw: str) -> str:
@@ -63,7 +64,7 @@ def login_gate() -> None:
     if st.session_state.get("auth"):
         return
 
-    # Lấy base64 của ảnh logo và ảnh bg1.jpg
+    # Lấy base64 của ảnh logo1.png và ảnh bg1.jpg
     bg1_file = ASSETS / "bg1.jpg"
     if not bg1_file.exists():
         bg1_file = ASSETS / "bg1.png"
@@ -71,7 +72,7 @@ def login_gate() -> None:
     bg1_b64 = get_image_base64(bg1_file)
     logo_b64 = get_image_base64(LOGO)
 
-    # CSS chỉnh cho ảnh nền phủ toàn bộ mảng màu trắng bên phải
+    # CSS Nền mảng màu trắng kem (#F8F5EE) & Ảnh hiển thị góc dưới
     custom_css = f"""
     <style>
         [data-testid="stSidebar"] {{ display: none !important; }}
@@ -84,14 +85,14 @@ def login_gate() -> None:
 
         /* Khung chứa trung tâm */
         .block-container {{
-            max-width: 900px !important;
+            max-width: 920px !important;
             padding-top: 10vh !important;
             padding-bottom: 0px !important;
         }}
 
         /* Bo góc khung đăng nhập chính */
         div[data-testid="stHorizontalBlock"] {{
-            background: #f4efe6;
+            background: #F8F5EE !important;
             border-radius: 28px;
             box-shadow: 0 25px 50px rgba(0,0,0,0.45);
             overflow: hidden;
@@ -140,14 +141,15 @@ def login_gate() -> None:
             text-transform: uppercase;
         }}
 
-        /* Cột phải - Phủ tràn toàn bộ ảnh bg1 trên mảng màu trắng */
+        /* Cột phải - Nền màu trắng kem + Ảnh sản phẩm hiển thị góc dưới */
         div[data-testid="stColumn"]:nth-child(2) {{
+            background-color: #F8F5EE !important;
             padding: 40px 45px !important;
             position: relative;
-            background-image: linear-gradient(rgba(244, 239, 230, 0.55), rgba(244, 239, 230, 0.55)), url('{bg1_b64}') !important;
+            background-image: url('{bg1_b64}') !important;
             background-repeat: no-repeat !important;
-            background-position: center !important;
-            background-size: cover !important;
+            background-position: bottom right !important;
+            background-size: 320px auto !important;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -161,7 +163,7 @@ def login_gate() -> None:
         }}
 
         .welcome-sub {{
-            color: #333333;
+            color: #666666;
             font-size: 13px;
             margin-bottom: 25px;
             font-weight: 500;
