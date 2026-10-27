@@ -20,7 +20,7 @@ elif (CURRENT_DIR.parent / "assets").exists():
 else:
     ASSETS = CURRENT_DIR / "assets"
 
-LOGO = ASSETS / "logo2.png" if (ASSETS / "logo2.png").exists() else ASSETS / "logo2.png"
+LOGO = ASSETS / "logo.png" if (ASSETS / "logo.png").exists() else ASSETS / "logo.png"
 
 
 def _h(pw: str) -> str:
