@@ -173,3 +173,9 @@ def is_admin() -> bool:
 def logout() -> None:
     st.session_state.pop("auth", None)
     st.rerun()
+    def check_login_credentials(username, password):
+    users = load_users()
+    if username in users and users[username]["password"] == password:
+        st.session_state["user"] = {"username": username, "role": users[username]["role"]}
+        return True
+    return False
