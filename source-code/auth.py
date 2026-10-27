@@ -71,7 +71,7 @@ def login_gate() -> None:
     bg1_b64 = get_image_base64(bg1_file)
     logo_b64 = get_image_base64(LOGO)
 
-    # CSS Nền mảng màu trắng kem (#F8F5EE) & Ảnh hiển thị góc dưới tự nhiên
+    # CSS chỉnh cho ảnh nền phủ toàn bộ mảng màu trắng bên phải
     custom_css = f"""
     <style>
         [data-testid="stSidebar"] {{ display: none !important; }}
@@ -84,14 +84,14 @@ def login_gate() -> None:
 
         /* Khung chứa trung tâm */
         .block-container {{
-            max-width: 920px !important;
+            max-width: 900px !important;
             padding-top: 10vh !important;
             padding-bottom: 0px !important;
         }}
 
         /* Bo góc khung đăng nhập chính */
         div[data-testid="stHorizontalBlock"] {{
-            background: #F8F5EE !important; /* Màu trắng kem chuẩn thiết kế */
+            background: #f4efe6;
             border-radius: 28px;
             box-shadow: 0 25px 50px rgba(0,0,0,0.45);
             overflow: hidden;
@@ -140,15 +140,14 @@ def login_gate() -> None:
             text-transform: uppercase;
         }}
 
-        /* Cột phải - Nền màu trắng kem + Ảnh sản phẩm hiển thị chìm góc dưới */
+        /* Cột phải - Phủ tràn toàn bộ ảnh bg1 trên mảng màu trắng */
         div[data-testid="stColumn"]:nth-child(2) {{
-            background-color: #F8F5EE !important;
             padding: 40px 45px !important;
             position: relative;
-            background-image: url('{bg1_b64}') !important;
+            background-image: linear-gradient(rgba(244, 239, 230, 0.55), rgba(244, 239, 230, 0.55)), url('{bg1_b64}') !important;
             background-repeat: no-repeat !important;
-            background-position: bottom right !important;
-            background-size: 320px auto !important;
+            background-position: center !important;
+            background-size: cover !important;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -162,7 +161,7 @@ def login_gate() -> None:
         }}
 
         .welcome-sub {{
-            color: #666666;
+            color: #333333;
             font-size: 13px;
             margin-bottom: 25px;
             font-weight: 500;
