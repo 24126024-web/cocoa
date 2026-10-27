@@ -45,29 +45,36 @@ def _norm(s: str) -> str:
 
 def classify_category(name: str) -> str:
     n = _norm(name)
-    if not n or n.startswith("hasaki #"): return UNKNOWN_CAT
-    if "môi" in n or "son dưỡng" in n: return "Chăm sóc môi"
-    if any(k in n for k in ("tóc", "dầu gội", "dầu xả", "bưởi")): return "Chăm sóc tóc"
-    if any(k in n for k in ("body", "gel tắm", "sữa tắm", "toàn thân", "cơ thể", "lưng", "thốt nốt")): return "Chăm sóc cơ thể"
+    if not n or n.startswith("hasaki #"): 
+        return UNKNOWN_CAT
+    if "môi" in n or "son dưỡng" in n: 
+        return "Chăm sóc môi"
+    if any(k in n for k in ("tóc", "dầu gội", "dầu xả", "bưởi")): 
+        return "Chăm sóc tóc"
+    if any(k in n for k in ("body", "gel tắm", "sữa tắm", "toàn thân", "cơ thể", "lưng", "thốt nốt")): 
+        return "Chăm sóc cơ thể"
     return "Chăm sóc da mặt"
 
 def classify_line(name: str) -> str:
     n = _norm(name).replace("nước hoa hồng", "")
-    if not n or n.startswith("hasaki #"): return UNKNOWN_CAT
+    if not n or n.startswith("hasaki #"): 
+        return UNKNOWN_CAT
     for key, label in [
         ("bí đao", "Bí đao"), ("cà phê", "Cà phê"), ("bưởi", "Bưởi"),
         ("nghệ", "Nghệ Hưng Yên"), ("sen", "Sen Hậu Giang"),
         ("hoa hồng", "Hoa hồng"), ("dầu dừa", "Dầu dừa"),
         ("sa-chi", "Sa-chi"), ("thốt nốt", "Thốt nốt"),
     ]:
-        if key in n: return label
+        if key in n: 
+            return label
     return "Khác"
 
 def sentiment_from_star(s) -> str:
-    if pd.isna(s): return "Chưa có đánh giá"
+    if pd.isna(s): 
+        return "Chưa có đánh giá"
     try:
-        s = float(s)
-        return "Tích cực" if s >= 4 else ("Trung tính" if s == 3 else "Tiêu cực")
+        val = float(s)
+        return "Tích cực" if val >= 4 else ("Trung tính" if val == 3 else "Tiêu cực")
     except (ValueError, TypeError):
         return "Chưa có đánh giá"
 
@@ -88,14 +95,20 @@ def load_base() -> pd.DataFrame:
     # =========================================================
     sp = _read_table(PRODUCTS_FILE).reset_index(drop=True)
     
-    # Chuẩn hóa tên cột (xóa khoảng trắng thừa)
+    # Chuẩn hóa tên cột: Xóa khoảng trắng thừa ở đầu/cuối tên cột
     sp.columns = [str(c).strip() for c in sp.columns]
     
-    # Tự động map tên cột lượt bán
+    # Đổi tên cột lượt bán linh hoạt
     for col in sp.columns:
         if "lượt bán" in col.lower():
             sp = sp.rename(columns={col: "Lượt bán"})
             break
+
+    # Lấy ngày đánh giá gần nhất từ Hasaki làm ngày mặc định cho Shopee (để không bị lỡ bộ lọc ngày)
+    hs_raw = _read_table(REVIEWS_FILE)
+    default_date = pd.to_datetime(hs_raw["Ngày review"], errors="coerce").max()
+    if pd.isna(default_date):
+        default_date = pd.Timestamp.now().normalize()
 
     shopee = pd.DataFrame({
         "rid": [f"SP-{i:05d}" for i in range(len(sp))],
@@ -105,16 +118,16 @@ def load_base() -> pd.DataFrame:
         "Giá bán": sp["Giá bán"] if "Giá bán" in sp.columns else pd.NA,
         "Lượt bán": sp["Lượt bán"] if "Lượt bán" in sp.columns else pd.NA,
         "Doanh thu 30 ngày": sp["Doanh thu 30 ngày"] if "Doanh thu 30 ngày" in sp.columns else pd.NA,
-        "Số sao": 5,  # Mặc định 5 sao
+        "Số sao": 5,
         "Nội dung review": "Không có nội dung review (Từ file sản phẩm)",
-        "Ngày review": pd.Timestamp.now().normalize(), # Chuẩn hóa ngày không có giờ
+        "Ngày review": default_date,
         "Đã mua hàng": "Có",
     })
 
     # =========================================================
     # 2. XỬ LÝ DỮ LIỆU HASAKI (Từ file Reviews_final.xlsx)
     # =========================================================
-    hs = _read_table(REVIEWS_FILE).reset_index(drop=True)
+    hs = hs_raw.reset_index(drop=True)
     hs.columns = [str(c).strip() for c in hs.columns]
     
     hasaki = pd.DataFrame({
@@ -123,7 +136,7 @@ def load_base() -> pd.DataFrame:
         "Mã SP": hs["Mã SP"] if "Mã SP" in hs.columns else pd.NA,
         "Số sao": hs["Số sao (review)"] if "Số sao (review)" in hs.columns else 5,
         "Nội dung review": hs["Nội dung review"] if "Nội dung review" in hs.columns else "",
-        "Ngày review": hs["Ngày review"] if "Ngày review" in hs.columns else pd.Timestamp.now().normalize(),
+        "Ngày review": hs["Ngày review"] if "Ngày review" in hs.columns else default_date,
         "Đã mua hàng": hs["Đã mua hàng"] if "Đã mua hàng" in hs.columns else "Có",
     })
     
@@ -146,16 +159,5 @@ def load_base() -> pd.DataFrame:
     # =========================================================
     df = pd.concat([shopee, hasaki[shopee.columns]], ignore_index=True)
     
-    # Chuẩn hóa kiểu dữ liệu
     df["Ngày review"] = pd.to_datetime(df["Ngày review"], errors="coerce").dt.normalize()
-    df["Tháng"] = df["Ngày review"].dt.to_period("M").dt.to_timestamp()
-    df["Nội dung review"] = df["Nội dung review"].fillna("").astype(str)
-    
-    for c in ("Giá bán", "Lượt bán", "Doanh thu 30 ngày", "Số sao"):
-        df[c] = pd.to_numeric(df[c], errors="coerce")
-        
-    df["Hạng mục"] = df["Tên sản phẩm"].map(classify_category)
-    df["Dòng sản phẩm"] = df["Tên sản phẩm"].map(classify_line)
-    df["Cảm xúc"] = df["Số sao"].apply(sentiment_from_star)
-    
-    return df
+    df["Tháng"] = df["Ngày review"].dt.to_
