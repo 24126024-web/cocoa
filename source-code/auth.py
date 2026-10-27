@@ -11,13 +11,36 @@ import streamlit as st
 
 MAX_ATTEMPTS = 5
 
+# 1. HÀM TÌM ĐƯỜNG DẪN ẢNH THÔNG MINH (TRÁNH LỖI ĐƯỜNG DẪN)
+def find_asset_path(filename: str) -> Path:
+    current_dir = Path(__file__).resolve().parent
+    possible_dirs = [
+        current_dir / "assets",
+        current_dir.parent / "assets",
+        Path("assets"),
+        Path("source-code/assets")
+    ]
+    for p_dir in possible_dirs:
+        file_path = p_dir / filename
+        if file_path.exists():
+            return file_path
+    return current_dir / "assets" / filename
+
+# KHAI BÁO BIẾN LOGO CỐ ĐỊNH ĐỂ APP.PY KHÔNG BỊ LỖI ATTRIBUTEERROR
+LOGO = find_asset_path("logo1.png")
+if not LOGO.exists():
+    LOGO = find_asset_path("logo.png")
+
+
 def _h(pw: str) -> str:
     return hashlib.sha256(pw.encode("utf-8")).hexdigest()
+
 
 DEFAULT_USERS = {
     "admin": {"password_sha256": _h("admin123"), "role": "Admin"},
     "user": {"password_sha256": _h("user123"), "role": "User"},
 }
+
 
 def _users() -> dict:
     try:
@@ -27,37 +50,34 @@ def _users() -> dict:
         pass
     return DEFAULT_USERS
 
+
 def using_default_accounts() -> bool:
     return _users() is DEFAULT_USERS
 
-def get_image_base64_smart(filenames: list[str]) -> str:
-    """Tìm file ảnh qua nhiều thư mục khả thi và đổi sang chuỗi Base64."""
-    current_dir = Path(__file__).resolve().parent
-    possible_dirs = [
-        current_dir / "assets",
-        current_dir.parent / "assets",
-        Path("assets"),
-        Path("source-code/assets")
-    ]
-    for fn in filenames:
-        for p_dir in possible_dirs:
-            file_path = p_dir / fn
-            if file_path.exists():
-                data = file_path.read_bytes()
-                ext = file_path.suffix.lower().replace(".", "")
-                if ext == "jpg":
-                    ext = "jpeg"
-                return f"data:image/{ext};base64,{base64.b64encode(data).decode()}"
+
+def get_image_base64(file_path: Path | str) -> str:
+    """Đọc file ảnh và chuyển sang chuỗi Base64."""
+    p = Path(file_path)
+    if p.exists():
+        data = p.read_bytes()
+        ext = p.suffix.lower().replace(".", "")
+        if ext == "jpg":
+            ext = "jpeg"
+        return f"data:image/{ext};base64,{base64.b64encode(data).decode()}"
     return ""
+
 
 def login_gate() -> None:
     """Hiện giao diện Đăng nhập Cocoon; dừng app nếu chưa đăng nhập."""
     if st.session_state.get("auth"):
         return
 
-    # Lấy base64 logo (ưu tiên logo1.png) và bg1.jpg
-    logo_b64 = get_image_base64_smart(["logo1.png", "logo1.jpg", "logo.png"])
-    bg1_b64 = get_image_base64_smart(["bg1.jpg", "bg1.png"])
+    # Lấy dữ liệu Base64 của logo1 và bg1.jpg
+    logo_b64 = get_image_base64(LOGO)
+    bg1_file = find_asset_path("bg1.jpg")
+    if not bg1_file.exists():
+        bg1_file = find_asset_path("bg1.png")
+    bg1_b64 = get_image_base64(bg1_file)
 
     custom_css = f"""
     <style>
@@ -225,11 +245,14 @@ def login_gate() -> None:
 
     st.stop()
 
+
 def current_user() -> dict:
     return st.session_state.get("auth", {"username": "Guest", "role": "User"})
 
+
 def is_admin() -> bool:
     return current_user().get("role") == "Admin"
+
 
 def logout() -> None:
     st.session_state.pop("auth", None)
