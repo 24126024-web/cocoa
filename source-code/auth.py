@@ -11,28 +11,13 @@ import streamlit as st
 
 MAX_ATTEMPTS = 5
 
-# TỰ ĐỘNG TÌM ĐÚNG THƯ MỤC ASSETS
-CURRENT_DIR = Path(__file__).resolve().parent
-if (CURRENT_DIR / "assets").exists():
-    ASSETS = CURRENT_DIR / "assets"
-elif (CURRENT_DIR.parent / "assets").exists():
-    ASSETS = CURRENT_DIR.parent / "assets"
-else:
-    ASSETS = CURRENT_DIR / "assets"
-
-# CHỈ ĐỊNH CHÍNH XÁC FILE logo1.png
-LOGO = ASSETS / "logo1.png"
-
-
 def _h(pw: str) -> str:
     return hashlib.sha256(pw.encode("utf-8")).hexdigest()
-
 
 DEFAULT_USERS = {
     "admin": {"password_sha256": _h("admin123"), "role": "Admin"},
     "user": {"password_sha256": _h("user123"), "role": "User"},
 }
-
 
 def _users() -> dict:
     try:
@@ -42,37 +27,38 @@ def _users() -> dict:
         pass
     return DEFAULT_USERS
 
-
 def using_default_accounts() -> bool:
     return _users() is DEFAULT_USERS
 
-
-def get_image_base64(file_path: Path | str) -> str:
-    """Đọc file ảnh và chuyển sang chuỗi Base64."""
-    p = Path(file_path)
-    if p.exists():
-        data = p.read_bytes()
-        ext = p.suffix.lower().replace(".", "")
-        if ext == "jpg":
-            ext = "jpeg"
-        return f"data:image/{ext};base64,{base64.b64encode(data).decode()}"
+def get_image_base64_smart(filenames: list[str]) -> str:
+    """Tìm file ảnh qua nhiều thư mục khả thi và đổi sang chuỗi Base64."""
+    current_dir = Path(__file__).resolve().parent
+    possible_dirs = [
+        current_dir / "assets",
+        current_dir.parent / "assets",
+        Path("assets"),
+        Path("source-code/assets")
+    ]
+    for fn in filenames:
+        for p_dir in possible_dirs:
+            file_path = p_dir / fn
+            if file_path.exists():
+                data = file_path.read_bytes()
+                ext = file_path.suffix.lower().replace(".", "")
+                if ext == "jpg":
+                    ext = "jpeg"
+                return f"data:image/{ext};base64,{base64.b64encode(data).decode()}"
     return ""
-
 
 def login_gate() -> None:
     """Hiện giao diện Đăng nhập Cocoon; dừng app nếu chưa đăng nhập."""
     if st.session_state.get("auth"):
         return
 
-    # Lấy base64 của ảnh logo1.png và ảnh bg1.jpg
-    bg1_file = ASSETS / "bg1.jpg"
-    if not bg1_file.exists():
-        bg1_file = ASSETS / "bg1.png"
+    # Lấy base64 logo (ưu tiên logo1.png) và bg1.jpg
+    logo_b64 = get_image_base64_smart(["logo1.png", "logo1.jpg", "logo.png"])
+    bg1_b64 = get_image_base64_smart(["bg1.jpg", "bg1.png"])
 
-    bg1_b64 = get_image_base64(bg1_file)
-    logo_b64 = get_image_base64(LOGO)
-
-    # CSS Nền màu trắng kem chuẩn #F8F5EE & Lớp phủ ảnh bg1.jpg hợp lý
     custom_css = f"""
     <style>
         [data-testid="stSidebar"] {{ display: none !important; }}
@@ -116,9 +102,9 @@ def login_gate() -> None:
         }}
 
         .left-logo {{
-            width: 120px !important;
+            width: 140px !important;
             max-width: 100%;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             object-fit: contain;
         }}
 
@@ -143,7 +129,7 @@ def login_gate() -> None:
             text-transform: uppercase;
         }}
 
-        /* Cột phải - Phủ nền trắng kem + Ảnh chìm đẹp mắt */
+        /* Cột phải - Phủ nền trắng kem + Ảnh chìm vừa vặn */
         div[data-testid="stColumn"]:nth-child(2) {{
             background-color: #F8F5EE !important;
             padding: 40px 45px !important;
@@ -171,7 +157,6 @@ def login_gate() -> None:
             font-weight: 500;
         }}
 
-        /* Styling Form Streamlit */
         div[data-testid="stForm"] {{
             border: none !important;
             padding: 0 !important;
@@ -181,13 +166,11 @@ def login_gate() -> None:
             max-width: 320px;
         }}
 
-        /* Ô nhập liệu tinh chỉnh cho sạch đẹp */
         div[data-baseweb="input"] {{
             background-color: rgba(255, 255, 255, 0.9) !important;
             border-radius: 8px !important;
         }}
 
-        /* Tùy chỉnh Nút Đăng nhập */
         .stButton > button {{
             background-color: #1b4332 !important;
             color: #ffffff !important;
@@ -206,12 +189,14 @@ def login_gate() -> None:
     """
     st.markdown(custom_css, unsafe_allow_html=True)
 
-    # Dựng cấu trúc 2 cột
     col_left, col_right = st.columns([4, 5])
 
     with col_left:
         if logo_b64:
             st.markdown(f'<img src="{logo_b64}" class="left-logo">', unsafe_allow_html=True)
+        else:
+            st.markdown('<h2 style="color:white;margin-bottom:15px;">Cocoon</h2>', unsafe_allow_html=True)
+            
         st.markdown('<div class="left-title">Welcome Back!</div>', unsafe_allow_html=True)
         st.markdown('<div class="left-desc">To stay connected with us please login with your personal info</div>', unsafe_allow_html=True)
         st.markdown('<div class="left-badge">COCOON ORIGINAL VIETNAM | NATURALLY CRAFTED</div>', unsafe_allow_html=True)
@@ -240,14 +225,11 @@ def login_gate() -> None:
 
     st.stop()
 
-
 def current_user() -> dict:
     return st.session_state.get("auth", {"username": "Guest", "role": "User"})
 
-
 def is_admin() -> bool:
     return current_user().get("role") == "Admin"
-
 
 def logout() -> None:
     st.session_state.pop("auth", None)
