@@ -5,6 +5,7 @@ Chạy:  streamlit run app.py
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 import pandas as pd
 from PIL import Image
@@ -15,11 +16,21 @@ import streamlit.components.v1 as components
 import auth
 import data_utils as du
 
-LOGO_PATH = auth.LOGO
-st.set_page_config(page_title="Cocoon Analytics", page_icon=Image.open(LOGO_PATH) if LOGO_PATH.exists() else None, layout="wide")
+# Tìm file logo.png
+LOGO_PATH = du.HERE / "logo.png"
+if not LOGO_PATH.exists():
+    LOGO_PATH = du.HERE / "dataset" / "logo.png"
+if hasattr(auth, "LOGO") and isinstance(auth.LOGO, Path) and auth.LOGO.exists():
+    LOGO_PATH = auth.LOGO
+
+st.set_page_config(
+    page_title="Cocoon Analytics", 
+    page_icon=Image.open(LOGO_PATH) if LOGO_PATH.exists() else None, 
+    layout="wide"
+)
 
 # ==========================================
-# CUSTOM CSS DASHBOARD EXECUTIVE UI (THIẾT KẾ MỚI)
+# CUSTOM CSS DASHBOARD EXECUTIVE UI (THIẾT KẾ GỐC)
 # ==========================================
 st.markdown("""
 <style>
@@ -118,6 +129,7 @@ st.markdown("""
 COLOR_DISCRETE = ["#1b4332", "#2d6a4f", "#40916c", "#52b788", "#74c69d", "#b7e4c7"]
 MAP_SOURCES = {"Shopee": "#ee4d2d", "Hasaki": "#117a50"}
 
+
 def style_plotly_figure(fig, title=""):
     fig.update_layout(
         title=dict(text=f"<b>{title}</b>", font=dict(family="Inter, sans-serif", size=15, color="#1b4332")),
@@ -131,17 +143,16 @@ def style_plotly_figure(fig, title=""):
     fig.update_yaxes(showgrid=True, gridcolor="#f0f0f0", zeroline=False)
     return fig
 
-# Đặt True nếu muốn tài khoản User cũng được tải file (mặc định: chỉ Admin).
+
 ALLOW_USER_EXPORT = False
 
-# Gọi hàm hiển thị Sign in Cocoon
+# Màn hình đăng nhập gốc
 auth.login_gate()
-
 user = auth.current_user()
 admin = auth.is_admin()
 
 
-@st.cache_data(show_spinner="Đang nạp dữ liệu…")
+@st.cache_data(ttl=60, show_spinner="Đang nạp dữ liệu...")
 def get_base(signature: tuple) -> pd.DataFrame:
     return du.load_base()
 
@@ -150,56 +161,62 @@ base = du.apply_deletions(get_base(du.data_signature()))
 
 
 def fmt_int(x) -> str:
-    return "—" if pd.isna(x) else f"{int(x):,}".replace(",", ".")
+    return "-" if pd.isna(x) else f"{int(x):,}".replace(",", ".")
 
 
 with st.sidebar:
-    st.image(str(LOGO_PATH), width=90)
-    st.markdown(f"👤 **{user['username']}** · `{user['role']}`")
+    if LOGO_PATH.exists():
+        st.image(str(LOGO_PATH), width=90)
+    st.markdown(f"**{user['username']}** · `{user['role']}`")
     if st.button("Đăng xuất"):
         auth.logout()
+        st.rerun()  # Trở về màn hình Sign-in ngay lập tức
     st.divider()
     st.header("Bộ lọc")
 
 source = st.sidebar.selectbox("Nền tảng", ["Tất cả", "Shopee", "Hasaki"])
 df = base if source == "Tất cả" else base[base["Nguồn"] == source]
 
-categories = ["Tất cả"] + sorted(df["Hạng mục"].unique())
+categories = ["Tất cả"] + sorted([str(x) for x in df["Hạng mục"].dropna().unique() if str(x).strip()])
 category = st.sidebar.selectbox("Hạng mục", categories)
 if category != "Tất cả":
     df = df[df["Hạng mục"] == category]
 
-lines = ["Tất cả"] + sorted(df["Dòng sản phẩm"].unique())
+lines = ["Tất cả"] + sorted([str(x) for x in df["Dòng sản phẩm"].dropna().unique() if str(x).strip()])
 line = st.sidebar.selectbox("Dòng sản phẩm", lines)
 if line != "Tất cả":
     df = df[df["Dòng sản phẩm"] == line]
 
-products = ["Tất cả"] + sorted(df["Tên sản phẩm"].unique())
+products = ["Tất cả"] + sorted([str(x) for x in df["Tên sản phẩm"].dropna().unique() if str(x).strip()])
 product = st.sidebar.selectbox("Sản phẩm", products)
 if product != "Tất cả":
     df = df[df["Tên sản phẩm"] == product]
 
 stars = st.sidebar.multiselect("Số sao", [1, 2, 3, 4, 5], default=[1, 2, 3, 4, 5])
-df = df[df["Số sao"].isin(stars)]
+if stars and not df.empty:
+    df = df[df["Số sao"].isin(stars)]
 
-if df["Ngày review"].notna().any():
-    dmin, dmax = df["Ngày review"].min().date(), df["Ngày review"].max().date()
-    rng = st.sidebar.date_input("Ngày review", (dmin, dmax), min_value=dmin, max_value=dmax)
-    if isinstance(rng, (tuple, list)) and len(rng) == 2:
-        df = df[(df["Ngày review"].dt.date >= rng[0]) & (df["Ngày review"].dt.date <= rng[1])]
+if not df.empty and df["Ngày review"].notna().any():
+    valid_dates = df["Ngày review"].dropna()
+    dmin, dmax = valid_dates.min().date(), valid_dates.max().date()
+    if dmin <= dmax:
+        rng = st.sidebar.date_input("Ngày review", (dmin, dmax), min_value=dmin, max_value=dmax)
+        if isinstance(rng, (tuple, list)) and len(rng) == 2:
+            df = df[(df["Ngày review"].dt.date >= rng[0]) & (df["Ngày review"].dt.date <= rng[1])]
 
 keyword = st.sidebar.text_input("Tìm trong nội dung review")
-if keyword.strip():
+if keyword.strip() and not df.empty:
     df = df[df["Nội dung review"].str.contains(keyword.strip(), case=False, na=False, regex=False)]
 
 st.sidebar.caption(f"{len(df):,} / {len(base):,} review sau khi lọc".replace(",", "."))
 if admin:
-    st.sidebar.caption("📁 Dữ liệu: Đã tải")
+    st.sidebar.caption("Dữ liệu: Đã tải")
 
 h1, h2 = st.columns([1, 12], vertical_alignment="center")
-h1.image(str(LOGO_PATH), width=70)
+if LOGO_PATH.exists():
+    h1.image(str(LOGO_PATH), width=70)
 h2.title("Cocoon Analytics")
-st.caption("Phân tích hành vi người tiêu dùng và phản hồi khách hàng — Shopee & Hasaki")
+st.caption("Phân tích hành vi người tiêu dùng và phản hồi khách hàng - Shopee & Hasaki")
 
 if df.empty:
     st.warning("Không có dữ liệu phù hợp với bộ lọc hiện tại.")
@@ -217,11 +234,11 @@ with tabs[0]:
     k1.metric("Số sản phẩm", fmt_int(len(prod)))
     k2.metric("Số review", fmt_int(len(df)))
     k3.metric("Sao trung bình", f"{df['Số sao'].mean():.2f}")
-    k4.metric("Tỉ lệ tích cực (4–5★)", f"{(df['Số sao'] >= 4).mean():.1%}")
-    k5.metric("Tỉ lệ tiêu cực (1–2★)", f"{(df['Số sao'] <= 2).mean():.1%}")
+    k4.metric("Tỉ lệ tích cực (4-5 sao)", f"{(df['Số sao'] >= 4).mean():.1%}")
+    k5.metric("Tỉ lệ tiêu cực (1-2 sao)", f"{(df['Số sao'] <= 2).mean():.1%}")
 
     st.write("")
-    st.subheader("Thống kê Min – Max")
+    st.subheader("Thống kê Min - Max")
     c1, c2, c3 = st.columns(3)
 
     def top_product(star: int):
@@ -231,18 +248,18 @@ with tabs[0]:
     p5, n5 = top_product(5)
     p1, n1 = top_product(1)
     with c1:
-        st.markdown("**Sản phẩm được 5★ nhiều nhất**")
-        st.write(f"{p5} — {n5} lượt" if p5 else "Không có dữ liệu")
-        st.markdown("**Sản phẩm bị 1★ nhiều nhất**")
-        st.write(f"{p1} — {n1} lượt" if p1 else "Không có review 1★ trong bộ lọc")
+        st.markdown("**Sản phẩm được 5 sao nhiều nhất**")
+        st.write(f"{p5} - {n5} lượt" if p5 else "Không có dữ liệu")
+        st.markdown("**Sản phẩm bị 1 sao nhiều nhất**")
+        st.write(f"{p1} - {n1} lượt" if p1 else "Không có review 1 sao trong bộ lọc")
 
     monthly_all = df.dropna(subset=["Tháng"]).groupby("Tháng").size()
     with c2:
         st.markdown("**Tháng nhiều review nhất**")
         if len(monthly_all):
-            st.write(f"{monthly_all.idxmax():%m/%Y} — {int(monthly_all.max())} review")
+            st.write(f"{monthly_all.idxmax():%m/%Y} - {int(monthly_all.max())} review")
             st.markdown("**Tháng ít review nhất**")
-            st.write(f"{monthly_all.idxmin():%m/%Y} — {int(monthly_all.min())} review")
+            st.write(f"{monthly_all.idxmin():%m/%Y} - {int(monthly_all.min())} review")
         st.caption("Dữ liệu không có doanh thu theo tháng nên dùng số review làm thước đo xu hướng mua.")
 
     rev = prod.dropna(subset=["Doanh thu 30 ngày"])
@@ -252,9 +269,9 @@ with tabs[0]:
             hi = rev.loc[rev["Doanh thu 30 ngày"].idxmax()]
             lo = rev.loc[rev["Doanh thu 30 ngày"].idxmin()]
             st.markdown("**Sản phẩm doanh thu 30 ngày cao nhất**")
-            st.write(f"{hi['Tên sản phẩm']} — {fmt_int(hi['Doanh thu 30 ngày'])} ₫")
+            st.write(f"{hi['Tên sản phẩm']} - {fmt_int(hi['Doanh thu 30 ngày'])} d")
             st.markdown("**Sản phẩm doanh thu 30 ngày thấp nhất**")
-            st.write(f"{lo['Tên sản phẩm']} — {fmt_int(lo['Doanh thu 30 ngày'])} ₫")
+            st.write(f"{lo['Tên sản phẩm']} - {fmt_int(lo['Doanh thu 30 ngày'])} d")
         else:
             st.markdown("**Doanh thu 30 ngày**")
             st.write("Không có dữ liệu doanh thu (chỉ có ở Shopee).")
@@ -331,14 +348,14 @@ with tabs[1]:
     st.subheader("Kết xuất báo cáo")
     if admin or ALLOW_USER_EXPORT:
         summary = pd.DataFrame({
-            "Chỉ số": ["Số review", "Số sản phẩm", "Sao trung bình", "% tích cực (4-5★)", "% tiêu cực (1-2★)"],
+            "Chỉ số": ["Số review", "Số sản phẩm", "Sao trung bình", "% tích cực (4-5 sao)", "% tiêu cực (1-2 sao)"],
             "Giá trị": [len(df), len(prod), round(df["Số sao"].mean(), 2), round((df["Số sao"] >= 4).mean() * 100, 1), round((df["Số sao"] <= 2).mean() * 100, 1)],
         })
         d1, d2, d3 = st.columns(3)
-        d1.download_button("⬇️ Review (CSV)", du.to_csv_bytes(df.drop(columns=["rid", "Tháng"])), "cocoon_reviews.csv", "text/csv")
-        d2.download_button("⬇️ Sản phẩm (CSV)", du.to_csv_bytes(prod), "cocoon_products.csv", "text/csv")
+        d1.download_button("Tai Review (CSV)", du.to_csv_bytes(df.drop(columns=["rid", "Tháng"])), "cocoon_reviews.csv", "text/csv")
+        d2.download_button("Tai San pham (CSV)", du.to_csv_bytes(prod), "cocoon_products.csv", "text/csv")
         d3.download_button(
-            "⬇️ Báo cáo (Excel)",
+            "Tai Bao cao (Excel)",
             du.to_excel_bytes({"Tóm tắt": summary, "Sản phẩm": prod, "Review": df.drop(columns=["rid", "Tháng"])}),
             "cocoon_report.xlsx",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -355,14 +372,14 @@ with tabs[2]:
     except Exception:
         pass
     if admin:
-        url = st.text_input("Link nhúng Power BI (Publish to web)", value=url, help="Có thể đặt cố định trong secrets.toml → POWERBI_EMBED_URL")
+        url = st.text_input("Link nhúng Power BI (Publish to web)", value=url, help="Có thể đặt cố định trong secrets.toml -> POWERBI_EMBED_URL")
     if url and url.startswith("https://"):
         components.iframe(url, height=720, scrolling=True)
     else:
         st.info(
             "Chưa cấu hình link Power BI.\n\n"
-            "1. Mở `dashboard_CK_real.pbix` → **Publish** lên Power BI Service.\n"
-            "2. Vào báo cáo → **File → Embed report → Publish to web (public)** → copy link.\n"
+            "1. Mở `dashboard_CK_real.pbix` -> **Publish** lên Power BI Service.\n"
+            "2. Vào báo cáo -> **File -> Embed report -> Publish to web (public)** -> copy link.\n"
             "3. Dán vào `POWERBI_EMBED_URL` trong `.streamlit/secrets.toml` (hoặc ô nhập ở trên, nếu là Admin).\n\n"
             "Lưu ý: *Publish to web* công khai báo cáo với bất kỳ ai có link."
         )
@@ -370,7 +387,7 @@ with tabs[2]:
 
 with tabs[3]:
     st.subheader("Kết quả mô hình (Giai đoạn 4)")
-    st.caption("Đặt file kết quả vào `dataset/model_outputs/` — app tự hiển thị.")
+    st.caption("Đặt file kết quả vào `dataset/model_outputs/` - app tự hiển thị.")
     expected = {
         "kmeans_clusters.csv": "K-Means: phân cụm khách hàng / review",
         "sentiment_predictions.csv": "Dự đoán cảm xúc (Random Forest / Logistic Regression)",
@@ -381,7 +398,7 @@ with tabs[3]:
         p = du.MODEL_DIR / fname
         if p.exists():
             found = True
-            with st.expander(f"{title} — {fname}", expanded=True):
+            with st.expander(f"{title} - {fname}", expanded=True):
                 st.dataframe(pd.read_csv(p), use_container_width=True, hide_index=True)
     if not found:
         st.info("Chưa có file kết quả. Tên file mong đợi: " + ", ".join(f"`{k}`" for k in expected))
@@ -408,14 +425,14 @@ if admin:
             }
         )
         picked = edited.loc[edited["Xóa"], "rid"].tolist()
-        if st.button(f"🗑️ Xóa {len(picked)} review đã chọn", disabled=not picked):
+        if st.button(f"Xóa {len(picked)} review đã chọn", disabled=not picked):
             n = du.delete_rows(picked, user["username"])
             st.success(f"Đã xóa {n} review.")
             st.rerun()
 
         st.markdown("**2. Xóa toàn bộ review đang lọc**")
         confirm = st.text_input(f"Gõ XOA để xác nhận xóa {len(df)} review", key="confirm_all")
-        if st.button("🗑️ Xóa toàn bộ kết quả lọc", disabled=confirm != "XOA"):
+        if st.button("Xóa toàn bộ kết quả lọc", disabled=confirm != "XOA"):
             n = du.delete_rows(df["rid"].tolist(), user["username"])
             st.success(f"Đã xóa {n} review.")
             st.rerun()
@@ -424,7 +441,7 @@ if admin:
         log = du.load_deleted()
         if log:
             st.dataframe(pd.DataFrame(log), use_container_width=True, hide_index=True)
-            if st.button("♻️ Khôi phục tất cả"):
+            if st.button("Khôi phục tất cả"):
                 du.restore_all()
                 st.rerun()
         else:
