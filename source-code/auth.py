@@ -1,317 +1,69 @@
-"""Nạp, phân loại, lọc và xuất dữ liệu Cocoon (Shopee & Hasaki)."""
+"""Quản lý xác thực và phân quyền người dùng (Cocoon Analytics)."""
 from __future__ import annotations
 
-import io
-import json
-import re
-import unicodedata
-from datetime import datetime
 from pathlib import Path
+import streamlit as st
 
-import pandas as pd
-
+# Đường dẫn Logo thương hiệu
 HERE = Path(__file__).resolve().parent
+LOGO = HERE / "logo.png"
+
+# Danh sách tài khoản mẫu (Có thể tùy chỉnh lại username/password)
+USERS = {
+    "admin": {"password": "123", "role": "admin", "name": "Administrator"},
+    "user": {"password": "123", "role": "user", "name": "Nhân viên"},
+}
 
 
-def _find_file(filename: str) -> Path:
-    search_paths = [
-        HERE / filename,
-        HERE / "dataset" / filename,
-        HERE.parent / filename,
-        HERE.parent / "dataset" / filename,
-        HERE.parent / "source-code" / "dataset" / filename,
-    ]
-    for p in search_paths:
-        if p.exists():
-            return p
-    return HERE / "dataset" / filename
+def login_gate() -> None:
+    """Hiển thị trang Đăng nhập (Sign-in Gate) nếu chưa đăng nhập."""
+    if "user" not in st.session_state:
+        st.session_state["user"] = None
 
+    if st.session_state["user"] is not None:
+        return
 
-HASAKI_PROD_FILE = _find_file("products_hasaki.xlsx")
-HASAKI_REV_FILE = _find_file("Reviews_hasaki.xlsx")
-SHOPEE_PROD_FILE = _find_file("cocoon_shopee_products_.xlsx")
-SHOPEE_REV_FILE = _find_file("cocoon_shopee_reviews__.xlsx")
+    # Giao diện Trang Đăng Nhập
+    c1, c2, c3 = st.columns([1, 2, 1])
+    with c2:
+        st.write("")
+        st.write("")
+        if LOGO.exists():
+            st.image(str(LOGO), width=120)
+        st.title("Đăng nhập")
+        st.caption("Hệ thống Phân tích & Quản trị Dữ liệu Cocoon Analytics")
 
-DELETED_FILE = HERE / "dataset" / "deleted_rows.json"
-if not DELETED_FILE.parent.exists():
-    DELETED_FILE = HERE / "deleted_rows.json"
+        username = st.text_input("Tên đăng nhập")
+        password = st.text_input("Mật khẩu", type="password")
 
-MODEL_DIR = HERE / "dataset" / "model_outputs"
-
-
-def _norm(s: str) -> str:
-    if pd.isna(s):
-        return ""
-    return unicodedata.normalize("NFC", str(s)).lower()
-
-
-def classify_category(name: str) -> str:
-    n = _norm(name)
-    if not n:
-        return "Chăm sóc da mặt"
-    if any(k in n for k in ("môi", "son dưỡng")):
-        return "Chăm sóc môi"
-    if any(k in n for k in ("tóc", "dầu gội", "dầu xả", "bưởi", "huyết thanh", "sa-chi", "sachi")):
-        return "Chăm sóc tóc"
-    if any(k in n for k in ("body", "gel tắm", "sữa tắm", "toàn thân", "cơ thể", "lưng", "thốt nốt", "tẩy tế bào chết body")):
-        return "Chăm sóc cơ thể"
-    return "Chăm sóc da mặt"
-
-
-def classify_line(name: str) -> str:
-    n = _norm(name).replace("nước hoa hồng", "")
-    if not n:
-        return "Khác"
-    for key, label in [
-        ("bí đao", "Bí đao"), ("cà phê", "Cà phê"), ("bưởi", "Bưởi"),
-        ("nghệ", "Nghệ Hưng Yên"), ("sen", "Sen Hậu Giang"),
-        ("hoa hồng", "Hoa hồng"), ("dầu dừa", "Dầu dừa"),
-        ("sa-chi", "Sa-chi"), ("thốt nốt", "Thốt nốt"),
-    ]:
-        if key in n:
-            return label
-    return "Khác"
-
-
-def sentiment_from_star(s) -> str:
-    if pd.isna(s):
-        return "Chưa có đánh giá"
-    try:
-        val = float(s)
-        return "Tích cực" if val >= 4 else ("Trung tính" if val == 3 else "Tiêu cực")
-    except (ValueError, TypeError):
-        return "Chưa có đánh giá"
-
-
-def data_signature() -> tuple:
-    return tuple(
-        f.stat().st_mtime if f.exists() else 0 
-        for f in (HASAKI_PROD_FILE, HASAKI_REV_FILE, SHOPEE_PROD_FILE, SHOPEE_REV_FILE)
-    )
-
-
-def _read_table(path: Path, sheet_name: str | int = 0) -> pd.DataFrame:
-    if not path.exists():
-        return pd.DataFrame()
-    try:
-        if path.suffix.lower() == ".csv":
-            return pd.read_csv(path)
-        return pd.read_excel(path, sheet_name=sheet_name)
-    except Exception:
-        return pd.DataFrame()
-
-
-def _standardize_cols(df: pd.DataFrame) -> pd.DataFrame:
-    if df.empty:
-        return df
-    df.columns = [str(c).strip() for c in df.columns]
-    
-    id_cols = [c for c in df.columns if _norm(c) in ("mã sp", "mã sản phẩm", "ma sp", "ma san pham", "product_id", "product id", "id_sp")]
-    if id_cols:
-        df = df.rename(columns={id_cols[0]: "Mã SP"})
-        
-    name_cols = [c for c in df.columns if _norm(c) in ("tên sản phẩm", "ten san pham", "product_name", "product name", "tên sp")]
-    if name_cols:
-        df = df.rename(columns={name_cols[0]: "Tên sản phẩm"})
-        
-    star_cols = [c for c in df.columns if "sao" in _norm(c) or "rating" in _norm(c)]
-    if star_cols:
-        df = df.rename(columns={star_cols[0]: "Số sao"})
-        
-    rev_cols = [c for c in df.columns if "nội dung" in _norm(c) or "review" in _norm(c) or "đánh giá" in _norm(c) or "comment" in _norm(c)]
-    if rev_cols and "Nội dung review" not in df.columns:
-        df = df.rename(columns={rev_cols[0]: "Nội dung review"})
-        
-    date_cols = [c for c in df.columns if "ngày" in _norm(c) or "date" in _norm(c) or "thời gian" in _norm(c)]
-    if date_cols and "Ngày review" not in df.columns:
-        df = df.rename(columns={date_cols[0]: "Ngày review"})
-
-    if "Lượt bán (30 ngày)" in df.columns and "Lượt bán" not in df.columns:
-        df = df.rename(columns={"Lượt bán (30 ngày)": "Lượt bán"})
-        
-    return df
-
-
-def load_base() -> pd.DataFrame:
-    try:
-        hk_p = _standardize_cols(_read_table(HASAKI_PROD_FILE))
-        hk_r = _standardize_cols(_read_table(HASAKI_REV_FILE))
-
-        sheet_sp = 0
-        if SHOPEE_PROD_FILE.exists() and SHOPEE_PROD_FILE.suffix.lower() in (".xlsx", ".xls"):
-            try:
-                sheets = pd.ExcelFile(SHOPEE_PROD_FILE).sheet_names
-                sheet_sp = "Products" if "Products" in sheets else 0
-            except Exception:
-                sheet_sp = 0
-
-        sp_p = _standardize_cols(_read_table(SHOPEE_PROD_FILE, sheet_name=sheet_sp))
-        sp_r = _standardize_cols(_read_table(SHOPEE_REV_FILE))
-
-        if not sp_r.empty:
-            if "Mã SP" in sp_r.columns and "Mã SP" in sp_p.columns:
-                sp_merged = sp_r.merge(sp_p.drop_duplicates("Mã SP"), on="Mã SP", how="left", suffixes=("", "_prod"))
+        if st.button("Đăng nhập", use_container_width=True):
+            user_info = USERS.get(username.strip())
+            if user_info and user_info["password"] == password:
+                st.session_state["user"] = {
+                    "username": username.strip(),
+                    "role": user_info["role"],
+                    "name": user_info["name"],
+                }
+                st.success("Đăng nhập thành công!")
+                st.rerun()
             else:
-                sp_merged = sp_r.copy()
+                st.error("Tên đăng nhập hoặc mật khẩu không đúng!")
 
-            shopee_df = pd.DataFrame({
-                "rid": [f"SP-{i:06d}" for i in range(len(sp_merged))],
-                "Nguồn": "Shopee",
-                "Mã SP": sp_merged["Mã SP"] if "Mã SP" in sp_merged.columns else "SP_UNKNOWN",
-                "Tên sản phẩm": sp_merged["Tên sản phẩm"] if "Tên sản phẩm" in sp_merged.columns else "Sản phẩm Shopee",
-                "Giá bán": sp_merged["Giá bán"] if "Giá bán" in sp_merged.columns else pd.NA,
-                "Lượt bán": sp_merged["Lượt bán"] if "Lượt bán" in sp_merged.columns else pd.NA,
-                "Doanh thu 30 ngày": sp_merged["Doanh thu 30 ngày"] if "Doanh thu 30 ngày" in sp_merged.columns else pd.NA,
-                "Số sao": sp_merged["Số sao"] if "Số sao" in sp_merged.columns else 5,
-                "Nội dung review": sp_merged["Nội dung review"] if "Nội dung review" in sp_merged.columns else "",
-                "Ngày review": sp_merged["Ngày review"] if "Ngày review" in sp_merged.columns else pd.Timestamp.now(),
-                "Đã mua hàng": sp_merged["Đã mua hàng"] if "Đã mua hàng" in sp_merged.columns else "Có",
-            })
-        else:
-            shopee_df = pd.DataFrame()
-
-        if not hk_r.empty:
-            if "Mã SP" in hk_r.columns and "Mã SP" in hk_p.columns:
-                hk_merged = hk_r.merge(hk_p.drop_duplicates("Mã SP"), on="Mã SP", how="left", suffixes=("", "_prod"))
-            else:
-                hk_merged = hk_r.copy()
-
-            hasaki_df = pd.DataFrame({
-                "rid": [f"HS-{i:06d}" for i in range(len(hk_merged))],
-                "Nguồn": "Hasaki",
-                "Mã SP": hk_merged["Mã SP"] if "Mã SP" in hk_merged.columns else "HS_UNKNOWN",
-                "Tên sản phẩm": hk_merged["Tên sản phẩm"] if "Tên sản phẩm" in hk_merged.columns else "Sản phẩm Hasaki",
-                "Giá bán": hk_merged["Giá bán"] if "Giá bán" in hk_merged.columns else pd.NA,
-                "Lượt bán": hk_merged["Lượt bán"] if "Lượt bán" in hk_merged.columns else pd.NA,
-                "Doanh thu 30 ngày": hk_merged["Doanh thu 30 ngày"] if "Doanh thu 30 ngày" in hk_merged.columns else pd.NA,
-                "Số sao": hk_merged["Số sao"] if "Số sao" in hk_merged.columns else 5,
-                "Nội dung review": hk_merged["Nội dung review"] if "Nội dung review" in hk_merged.columns else "",
-                "Ngày review": hk_merged["Ngày review"] if "Ngày review" in hk_merged.columns else pd.Timestamp.now(),
-                "Đã mua hàng": hk_merged["Đã mua hàng"] if "Đã mua hàng" in hk_merged.columns else "Có",
-            })
-        else:
-            hasaki_df = pd.DataFrame()
-
-        df = pd.concat([shopee_df, hasaki_df], ignore_index=True)
-
-        if df.empty:
-            return pd.DataFrame(columns=[
-                "rid", "Nguồn", "Mã SP", "Tên sản phẩm", "Giá bán", "Lượt bán", 
-                "Doanh thu 30 ngày", "Số sao", "Nội dung review", "Ngày review", 
-                "Đã mua hàng", "Tháng", "Hạng mục", "Dòng sản phẩm", "Cảm xúc"
-            ])
-
-        df["Ngày review"] = pd.to_datetime(df["Ngày review"], errors="coerce").fillna(pd.Timestamp.now()).dt.normalize()
-        df["Tháng"] = df["Ngày review"].dt.to_period("M").dt.to_timestamp()
-        df["Nội dung review"] = df["Nội dung review"].fillna("").astype(str)
-        df["Tên sản phẩm"] = df["Tên sản phẩm"].fillna("Sản phẩm Cocoon").astype(str)
-
-        for c in ("Giá bán", "Lượt bán", "Doanh thu 30 ngày", "Số sao"):
-            df[c] = pd.to_numeric(df[c], errors="coerce")
-
-        df["Hạng mục"] = df["Tên sản phẩm"].map(classify_category)
-        df["Dòng sản phẩm"] = df["Tên sản phẩm"].map(classify_line)
-        df["Cảm xúc"] = df["Số sao"].apply(sentiment_from_star)
-
-        return df
-
-    except Exception as e:
-        print(f"Lỗi load_base: {e}")
-        return pd.DataFrame(columns=[
-            "rid", "Nguồn", "Mã SP", "Tên sản phẩm", "Giá bán", "Lượt bán", 
-            "Doanh thu 30 ngày", "Số sao", "Nội dung review", "Ngày review", 
-            "Đã mua hàng", "Tháng", "Hạng mục", "Dòng sản phẩm", "Cảm xúc"
-        ])
+        st.stop()
 
 
-def load_deleted() -> list[dict]:
-    if DELETED_FILE.exists():
-        try:
-            data = json.loads(DELETED_FILE.read_text(encoding="utf-8"))
-            if isinstance(data, list):
-                return [d for d in data if isinstance(d, dict) and "rid" in d]
-        except Exception:
-            return []
-    return []
+def current_user() -> dict:
+    """Lấy thông tin tài khoản đang đăng nhập."""
+    return st.session_state.get("user") or {"username": "guest", "role": "user", "name": "Khách"}
 
 
-def delete_rows(rids: list[str], by: str) -> int:
-    log = load_deleted()
-    existing = {d["rid"] for d in log if isinstance(d, dict) and "rid" in d}
-    now = datetime.now().isoformat(timespec="seconds")
-    new = [{"rid": r, "by": by, "at": now} for r in rids if r not in existing]
-    DELETED_FILE.write_text(json.dumps(log + new, ensure_ascii=False, indent=1), encoding="utf-8")
-    return len(new)
+def is_admin() -> bool:
+    """Kiểm tra xem tài khoản hiện tại có phải Admin không."""
+    user = current_user()
+    return user.get("role") == "admin"
 
 
-def restore_all() -> None:
-    if DELETED_FILE.exists():
-        DELETED_FILE.unlink()
-
-
-def apply_deletions(df: pd.DataFrame) -> pd.DataFrame:
-    if df is None or not isinstance(df, pd.DataFrame) or df.empty:
-        return pd.DataFrame(columns=[
-            "rid", "Nguồn", "Mã SP", "Tên sản phẩm", "Giá bán", "Lượt bán", 
-            "Doanh thu 30 ngày", "Số sao", "Nội dung review", "Ngày review", 
-            "Đã mua hàng", "Tháng", "Hạng mục", "Dòng sản phẩm", "Cảm xúc"
-        ])
-    if "rid" not in df.columns:
-        return df
-
-    log = load_deleted()
-    gone = {d["rid"] for d in log if isinstance(d, dict) and "rid" in d}
-    return df[~df["rid"].isin(gone)] if gone else df
-
-
-def product_table(df: pd.DataFrame) -> pd.DataFrame:
-    if df is None or not isinstance(df, pd.DataFrame) or df.empty:
-        return pd.DataFrame()
-    g = df.groupby(["Nguồn", "Mã SP", "Tên sản phẩm", "Hạng mục", "Dòng sản phẩm"], observed=True, dropna=False)
-    out = g.agg(**{
-        "Giá bán": ("Giá bán", "first"),
-        "Lượt bán": ("Lượt bán", "first"),
-        "Doanh thu 30 ngày": ("Doanh thu 30 ngày", "first"),
-        "Số review": ("rid", "size"),
-        "Sao TB (review)": ("Số sao", "mean"),
-        "Số review 1★": ("Số sao", lambda s: int((s == 1).sum())),
-        "Số review 5★": ("Số sao", lambda s: int((s == 5).sum())),
-    }).reset_index()
-    out["Sao TB (review)"] = out["Sao TB (review)"].round(2)
-    return out.sort_values("Số review", ascending=False)
-
-
-def monthly_table(df: pd.DataFrame) -> pd.DataFrame:
-    if df is None or not isinstance(df, pd.DataFrame) or df.empty:
-        return pd.DataFrame()
-    if "Tháng" not in df.columns:
-        return pd.DataFrame()
-    d = df.dropna(subset=["Tháng"])
-    return (d.groupby(["Tháng", "Nguồn"]).size().rename("Số review").reset_index())
-
-
-_ILLEGAL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
-
-
-def _clean_for_excel(df: pd.DataFrame) -> pd.DataFrame:
-    if df is None or not isinstance(df, pd.DataFrame):
-        return pd.DataFrame()
-    df = df.copy()
-    for c in df.select_dtypes(include=["object", "string"]).columns:
-        df[c] = df[c].map(lambda v: _ILLEGAL.sub("", v) if isinstance(v, str) else v)
-    return df
-
-
-def to_csv_bytes(df: pd.DataFrame) -> bytes:
-    if df is None or not isinstance(df, pd.DataFrame):
-        return b""
-    return df.to_csv(index=False).encode("utf-8-sig")
-
-
-def to_excel_bytes(sheets: dict[str, pd.DataFrame]) -> bytes:
-    buf = io.BytesIO()
-    with pd.ExcelWriter(buf, engine="openpyxl") as xw:
-        for name, frame in sheets.items():
-            if isinstance(frame, pd.DataFrame):
-                _clean_for_excel(frame).to_excel(xw, sheet_name=name[:31], index=False)
-    return buf.getvalue()
+def logout() -> None:
+    """Đăng xuất khỏi hệ thống."""
+    st.session_state["user"] = None
+    st.rerun()
