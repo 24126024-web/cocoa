@@ -137,7 +137,7 @@ def style_plotly_figure(fig, title=""):
     return fig
 
 
-ALLOW_USER_EXPORT = False
+ALLOW_USER_EXPORT = True
 
 auth.login_gate()
 user = auth.current_user()
