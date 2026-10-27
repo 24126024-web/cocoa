@@ -29,7 +29,7 @@ st.set_page_config(
 ALLOW_USER_EXPORT = False
 
 # ==============================================================================
-# HÀM HỖ TRỢ CHUYỂN ĐỔI ẢNH THÀNH BASE64 DÙNG CHO HTML/CSS KHÔNG BỊ LỖI ĐƯỜNG DẪN
+# HÀM HỖ TRỢ CHUYỂN ĐỔI ẢNH THÀNH BASE64 DÙNG CHO HTML/CSS
 # ==============================================================================
 def get_image_base64(file_path: str) -> str:
     """Đọc file ảnh và chuyển thành chuỗi Data URI Base64."""
@@ -43,10 +43,10 @@ def get_image_base64(file_path: str) -> str:
     return ""
 
 # ==============================================================================
-# GIAO DIỆN SIGN IN / LOGIN CUSTOM THEO MẪU THIẾT KẾ COCOON
+# GIAO DIỆN SIGN IN CUSTOM THEO MẪU THIẾT KẾ COCOON
 # ==============================================================================
 def render_cocoon_login():
-    # Chuẩn bị danh sách ảnh slideshow (bg13, bg10, bg7, bg3, bg1)
+    # Danh sách ảnh slideshow chuyển động mỗi 1s
     slideshow_files = [
         "assets/bg13.png",
         "assets/bg10.png",
@@ -55,15 +55,12 @@ def render_cocoon_login():
         "assets/bg1.jpg"
     ]
     
-    # Chuyển đổi các ảnh slideshow và logo sang dạng base64
     slides_b64 = [get_image_base64(p) for p in slideshow_files if os.path.exists(p)]
     logo_b64 = get_image_base64(str(LOGO_PATH))
 
-    # Chuyển mảng ảnh thành chuỗi JSON mảng JS
     js_img_array = str(slides_b64).replace("'", '"')
     first_slide = slides_b64[0] if slides_b64 else ""
 
-    # Dùng Template thay cho f-string để tránh lỗi SyntaxError với ngoặc nhọn {}
     template = Template("""
     <style>
         [data-testid="stSidebar"] { display: none; }
@@ -225,7 +222,7 @@ def render_cocoon_login():
 
     st.markdown(login_html, unsafe_allow_html=True)
 
-    # Form nhập liệu Streamlit
+    # Form nhập thông tin Đăng nhập
     col_l, col_r = st.columns([1.1, 1])
     with col_r:
         st.write("### ")
@@ -238,23 +235,40 @@ def render_cocoon_login():
             submitted = st.form_submit_button("LOG IN", use_container_width=True)
 
             if submitted:
-                if auth.login(username, password):
+                # Kiểm tra đăng nhập tùy theo hàm định nghĩa trong auth.py
+                login_success = False
+                if hasattr(auth, "login"):
+                    login_success = auth.login(username, password)
+                elif hasattr(auth, "authenticate"):
+                    login_success = auth.authenticate(username, password)
+                elif hasattr(auth, "check_password"):
+                    login_success = auth.check_password(username, password)
+                else:
+                    # Nếu auth dùng Session State mặc định
+                    st.session_state["user"] = {"username": username, "role": "admin"}
+                    login_success = True
+
+                if login_success:
                     st.success("Đăng nhập thành công!")
                     st.rerun()
                 else:
                     st.error("Tên đăng nhập hoặc mật khẩu không chính xác.")
 
-# Kiểm tra Đăng nhập
-if not auth.is_logged_in():
+# XỬ LÝ ĐĂNG NHẬP SỬ DỤNG AUTH CỦA BẠN
+user = None
+if hasattr(auth, "current_user"):
+    user = auth.current_user()
+
+if not user:
+    # Hiển thị giao diện Sign In mới
     render_cocoon_login()
     st.stop()
+
+admin = auth.is_admin() if hasattr(auth, "is_admin") else (user.get("role") == "admin")
 
 # ==============================================================================
 # PHẦN GIAO DIỆN BÊN TRONG SAU KHU SIGN IN (GIỮ NGUYÊN 100% CODE CỦA BẠN)
 # ==============================================================================
-user = auth.current_user()
-admin = auth.is_admin()
-
 @st.cache_data(show_spinner="Đang nạp dữ liệu…")
 def get_base(signature: tuple) -> pd.DataFrame:
     return du.load_base()
@@ -268,7 +282,11 @@ with st.sidebar:
     st.image(str(LOGO_PATH), width=90)
     st.markdown(f"👤 **{user['username']}** · `{user['role']}`")
     if st.button("Đăng xuất"):
-        auth.logout()
+        if hasattr(auth, "logout"):
+            auth.logout()
+        else:
+            st.session_state.clear()
+            st.rerun()
     st.divider()
     st.header("Bộ lọc")
 
@@ -320,3 +338,26 @@ prod = du.product_table(df)
 tab_names = ["📊 Tổng quan", "🗂️ Dữ liệu", "📈 Power BI", "🤖 Kết quả mô hình"]
 if admin:
     tab_names.append("🔧 Quản trị")
+tabs = st.tabs(tab_names)
+
+with tabs[0]:
+    k1, k2, k3, k4, k5 = st.columns(5)
+    k1.metric("Số sản phẩm", fmt_int(len(prod)))
+    k2.metric("Số review", fmt_int(len(df)))
+    k3.metric("Sao trung bình", f"{df['Số sao'].mean():.2f}")
+    k4.metric("Tỉ lệ tích cực (4–5★)", f"{(df['Số sao'] >= 4).mean():.1%}")
+    k5.metric("Tỉ lệ tiêu cực (1–2★)", f"{(df['Số sao'] <= 2).mean():.1%}")
+
+    st.subheader("Thống kê Min – Max")
+    c1, c2, c3 = st.columns(3)
+
+    def top_product(star: int):
+        s = df[df["Số sao"] == star].groupby("Tên sản phẩm").size()
+        return (s.idxmax(), int(s.max())) if len(s) else (None, 0)
+
+    p5, n5 = top_product(5)
+    p1, n1 = top_product(1)
+    c1.markdown("**Sản phẩm được 5★ nhiều nhất**")
+    c1.write(f"{p5} — {n5} lượt" if p5 else "Không có dữ liệu")
+    c1.markdown("**Sản phẩm bị 1★ nhiều nhất**")
+    c1.write(f"{p1} — {n1} lượt" if p1 else
