@@ -18,6 +18,24 @@ import data_utils as du
 LOGO_PATH = auth.LOGO
 st.set_page_config(page_title="Cocoon Analytics", page_icon=Image.open(LOGO_PATH) if LOGO_PATH.exists() else None, layout="wide")
 
+# BẢNG MÀU CHUẨN DESIGN COCOON / DASHBOARD ANALYTICS
+COLOR_DISCRETE = ["#1b4332", "#2d6a4f", "#40916c", "#52b788", "#74c69d", "#b7e4c7"]
+MAP_SOURCES = {"Shopee": "#ee4d2d", "Hasaki": "#117a50"}
+
+# Tối ưu hóa Style chung cho tất cả biểu đồ Plotly
+def style_plotly_figure(fig, title=""):
+    fig.update_layout(
+        title=dict(text=f"<b>{title}</b>", font=dict(family="Segoe UI, sans-serif", size=16, color="#1b4332")),
+        font=dict(family="Segoe UI, sans-serif", color="#333333"),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=20, r=20, t=50, b=20),
+        legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
+    )
+    fig.update_xaxes(showgrid=False, zeroline=False)
+    fig.update_yaxes(showgrid=True, gridcolor="#e9ecef", zeroline=False)
+    return fig
+
 # Đặt True nếu muốn tài khoản User cũng được tải file (mặc định: chỉ Admin).
 ALLOW_USER_EXPORT = False
 
@@ -148,24 +166,55 @@ with tabs[0]:
     with g1:
         pie = rev.groupby("Dòng sản phẩm")["Doanh thu 30 ngày"].sum().reset_index()
         if len(pie):
-            fig = px.pie(pie, names="Dòng sản phẩm", values="Doanh thu 30 ngày", hole=0.35, title="Cơ cấu doanh thu 30 ngày theo dòng sản phẩm")
+            fig = px.pie(
+                pie, 
+                names="Dòng sản phẩm", 
+                values="Doanh thu 30 ngày", 
+                hole=0.45, 
+                color_discrete_sequence=COLOR_DISCRETE
+            )
+            fig = style_plotly_figure(fig, "Cơ cấu doanh thu 30 ngày theo dòng sản phẩm")
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("Chưa có dữ liệu doanh thu để vẽ biểu đồ tròn.")
 
     with g2:
         mt = du.monthly_table(df)
-        fig = px.line(mt, x="Tháng", y="Số review", color="Nguồn", markers=True, title="Xu hướng số lượng review theo tháng")
+        fig = px.line(
+            mt, 
+            x="Tháng", 
+            y="Số review", 
+            color="Nguồn", 
+            markers=True, 
+            color_discrete_map=MAP_SOURCES
+        )
+        fig = style_plotly_figure(fig, "Xu hướng số lượng review theo tháng")
         st.plotly_chart(fig, use_container_width=True)
 
     g3, g4 = st.columns(2)
     with g3:
         dist = df.groupby(["Số sao", "Nguồn"]).size().reset_index(name="Số review")
-        fig = px.bar(dist, x="Số sao", y="Số review", color="Nguồn", barmode="group", title="Phân bố số sao")
+        fig = px.bar(
+            dist, 
+            x="Số sao", 
+            y="Số review", 
+            color="Nguồn", 
+            barmode="group", 
+            color_discrete_map=MAP_SOURCES
+        )
+        fig = style_plotly_figure(fig, "Phân bố số sao")
         st.plotly_chart(fig, use_container_width=True)
+
     with g4:
         top = prod.nlargest(10, "Số review")
-        fig = px.bar(top, x="Số review", y="Tên sản phẩm", orientation="h", title="Top 10 sản phẩm theo số review")
+        fig = px.bar(
+            top, 
+            x="Số review", 
+            y="Tên sản phẩm", 
+            orientation="h", 
+            color_discrete_sequence=["#1b4332"]
+        )
+        fig = style_plotly_figure(fig, "Top 10 sản phẩm theo số review")
         fig.update_layout(yaxis={"categoryorder": "total ascending"})
         st.plotly_chart(fig, use_container_width=True)
 
