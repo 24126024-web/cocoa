@@ -285,4 +285,152 @@ with tabs[0]:
                 hole=0.45, 
                 color_discrete_sequence=COLOR_DISCRETE
             )
-            fig = style_plotly_figure(fig, "Cơ cấu doanh thu 30 ngày theo dòng sản phẩm
+            fig = style_plotly_figure(fig, "Cơ cấu doanh thu 30 ngày theo dòng sản phẩm")
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Chưa có dữ liệu doanh thu để vẽ biểu đồ tròn.")
+
+    with g2:
+        mt = du.monthly_table(df)
+        if not mt.empty:
+            fig = px.line(
+                mt, 
+                x="Tháng", 
+                y="Số review", 
+                color="Nguồn", 
+                markers=True, 
+                color_discrete_map=MAP_SOURCES
+            )
+            fig = style_plotly_figure(fig, "Xu hướng số lượng review theo tháng")
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Chưa có dữ liệu theo tháng.")
+
+    g3, g4 = st.columns(2)
+    with g3:
+        dist = df.groupby(["Số sao", "Nguồn"]).size().reset_index(name="Số review")
+        fig = px.bar(
+            dist, 
+            x="Số sao", 
+            y="Số review", 
+            color="Nguồn", 
+            barmode="group", 
+            color_discrete_map=MAP_SOURCES
+        )
+        fig = style_plotly_figure(fig, "Phân bố số sao")
+        st.plotly_chart(fig, use_container_width=True)
+
+    with g4:
+        top = prod.nlargest(10, "Số review")
+        fig = px.bar(
+            top, 
+            x="Số review", 
+            y="Tên sản phẩm", 
+            orientation="h", 
+            color_discrete_sequence=["#1b4332"]
+        )
+        fig = style_plotly_figure(fig, "Top 10 sản phẩm theo số review")
+        fig.update_layout(yaxis={"categoryorder": "total ascending"})
+        st.plotly_chart(fig, use_container_width=True)
+
+with tabs[1]:
+    st.subheader("Bảng sản phẩm")
+    st.dataframe(prod, use_container_width=True, hide_index=True)
+    st.subheader("Bảng review")
+    show = ["Nguồn", "Mã SP", "Tên sản phẩm", "Hạng mục", "Số sao", "Cảm xúc", "Nội dung review", "Ngày review", "Đã mua hàng"]
+    st.dataframe(df[show].sort_values("Ngày review", ascending=False).head(2000), use_container_width=True, hide_index=True)
+    if len(df) > 2000:
+        st.caption("Hiển thị 2.000 review mới nhất; bản xuất file chứa đầy đủ.")
+
+    st.subheader("Kết xuất báo cáo")
+    if admin or ALLOW_USER_EXPORT:
+        summary = pd.DataFrame({
+            "Chỉ số": ["Số review", "Số sản phẩm", "Sao trung bình", "% tích cực (4-5★)", "% tiêu cực (1-2★)"],
+            "Giá trị": [len(df), len(prod), round(df["Số sao"].mean(), 2), round((df["Số sao"] >= 4).mean() * 100, 1), round((df["Số sao"] <= 2).mean() * 100, 1)],
+        })
+        d1, d2, d3 = st.columns(3)
+        d1.download_button("⬇️ Review (CSV)", du.to_csv_bytes(df.drop(columns=["rid", "Tháng"], errors="ignore")), "cocoon_reviews.csv", "text/csv")
+        d2.download_button("⬇️ Sản phẩm (CSV)", du.to_csv_bytes(prod), "cocoon_products.csv", "text/csv")
+        d3.download_button(
+            "⬇️ Báo cáo (Excel)",
+            du.to_excel_bytes({"Tóm tắt": summary, "Sản phẩm": prod, "Review": df.drop(columns=["rid", "Tháng"], errors="ignore")}),
+            "cocoon_report.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    else:
+        st.info("Chỉ tài khoản Admin được tải dữ liệu.")
+
+with tabs[2]:
+    st.subheader("Dashboard Power BI")
+    url = os.environ.get("POWERBI_EMBED_URL", "")
+    try:
+        url = st.secrets.get("POWERBI_EMBED_URL", url)
+    except Exception:
+        pass
+    if admin:
+        url = st.text_input("Link nhúng Power BI (Publish to web)", value=url, help="Ví dụ dạng https://app.powerbi.com/view?r=...")
+    if url and url.startswith("https://"):
+        components.iframe(url, height=720, scrolling=True)
+    else:
+        st.info("Chưa cấu hình link Power BI. Vui lòng lấy link 'Publish to web' (dạng /view?r=...) để hiển thị.")
+
+with tabs[3]:
+    st.subheader("Kết quả mô hình (Giai đoạn 4)")
+    st.caption("Đặt file kết quả vào `dataset/model_outputs/` — app tự hiển thị.")
+    expected = {
+        "kmeans_clusters.csv": "K-Means: phân cụm khách hàng / review",
+        "sentiment_predictions.csv": "Dự đoán cảm xúc (Random Forest / Logistic Regression)",
+        "apriori_rules.csv": "Luật kết hợp Apriori (gợi ý combo)",
+    }
+    found = False
+    for fname, title in expected.items():
+        p = du.MODEL_DIR / fname
+        if p.exists():
+            found = True
+            with st.expander(f"{title} — {fname}", expanded=True):
+                st.dataframe(pd.read_csv(p), use_container_width=True, hide_index=True)
+    if not found:
+        st.info("Chưa có file kết quả. Tên file mong đợi: " + ", ".join(f"`{k}`" for k in expected))
+
+if admin:
+    with tabs[4]:
+        st.subheader("Quản trị dữ liệu")
+        st.caption("Xóa là *xóa mềm*: file dữ liệu gốc không bị sửa, có thể khôi phục.")
+
+        st.markdown("**1. Chọn từng review để xóa** (tối đa 300 dòng theo bộ lọc hiện tại)")
+        cols = ["rid", "Nguồn", "Tên sản phẩm", "Số sao", "Nội dung review"]
+        sample = df[cols].head(300).copy()
+        sample.insert(0, "Xóa", False)
+        edited = st.data_editor(
+            sample,
+            hide_index=True,
+            use_container_width=True,
+            key="del_editor",
+            disabled=cols,
+            column_config={
+                "Xóa": st.column_config.CheckboxColumn("Xóa"),
+                "rid": st.column_config.TextColumn("ID")
+            }
+        )
+        picked = edited.loc[edited["Xóa"], "rid"].tolist()
+        if st.button(f"🗑️ Xóa {len(picked)} review đã chọn", disabled=not picked):
+            n = du.delete_rows(picked, user["username"])
+            st.success(f"Đã xóa {n} review.")
+            st.rerun()
+
+        st.markdown("**2. Xóa toàn bộ review đang lọc**")
+        confirm = st.text_input(f"Gõ XOA để xác nhận xóa {len(df)} review", key="confirm_all")
+        if st.button("🗑️ Xóa toàn bộ kết quả lọc", disabled=confirm != "XOA"):
+            n = du.delete_rows(df["rid"].tolist(), user["username"])
+            st.success(f"Đã xóa {n} review.")
+            st.rerun()
+
+        st.markdown("**3. Nhật ký xóa / khôi phục**")
+        log = du.load_deleted()
+        if log:
+            st.dataframe(pd.DataFrame(log), use_container_width=True, hide_index=True)
+            if st.button("♻️ Khôi phục tất cả"):
+                du.restore_all()
+                st.rerun()
+        else:
+            st.write("Chưa có review nào bị xóa.")
