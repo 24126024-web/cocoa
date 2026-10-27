@@ -16,10 +16,16 @@ import streamlit.components.v1 as components
 import auth
 import data_utils as du
 
-# Tìm Logo
-LOGO_PATH = getattr(auth, "LOGO", du.HERE / "logo.png")
-if not isinstance(LOGO_PATH, Path) or not LOGO_PATH.exists():
-    LOGO_PATH = du.HERE / "dataset" / "logo.png"
+# Tìm Logo an toàn trên toàn bộ thư mục
+def _get_logo_path() -> Path:
+    if hasattr(auth, "LOGO") and isinstance(auth.LOGO, Path) and auth.LOGO.exists():
+        return auth.LOGO
+    for p in [du.HERE / "logo.png", du.HERE / "dataset" / "logo.png", du.HERE.parent / "logo.png"]:
+        if p.exists():
+            return p
+    return du.HERE / "logo.png"
+
+LOGO_PATH = _get_logo_path()
 
 st.set_page_config(
     page_title="Cocoon Analytics", 
@@ -137,7 +143,7 @@ def style_plotly_figure(fig, title=""):
 
 ALLOW_USER_EXPORT = False
 
-# Gọi cổng đăng nhập chính thức
+# MỞ LẠI TRANG ĐĂNG NHẬP (SIGN-IN GATE)
 if hasattr(auth, "login_gate"):
     auth.login_gate()
 elif hasattr(auth, "login"):
