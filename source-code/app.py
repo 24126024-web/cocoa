@@ -16,11 +16,8 @@ import streamlit.components.v1 as components
 import auth
 import data_utils as du
 
-if hasattr(auth, "LOGO") and isinstance(auth.LOGO, Path):
-    LOGO_PATH = auth.LOGO
-elif hasattr(auth, "LOGO_PATH") and isinstance(auth.LOGO_PATH, Path):
-    LOGO_PATH = auth.LOGO_PATH
-else:
+LOGO_PATH = getattr(auth, "LOGO", du.HERE / "logo.png")
+if not isinstance(LOGO_PATH, Path):
     LOGO_PATH = du.HERE / "logo.png"
 
 st.set_page_config(
@@ -146,26 +143,14 @@ def style_plotly_figure(fig, title=""):
 
 ALLOW_USER_EXPORT = False
 
-ALLOW_USER_EXPORT = False
-
-# Xử lý gọi cổng đăng nhập an toàn (hỗ trợ nhiều tên hàm auth khác nhau)
+# Mở trang Đăng nhập Sign-in Gate chuẩn gốc
 if hasattr(auth, "login_gate"):
     auth.login_gate()
 elif hasattr(auth, "login"):
     auth.login()
-elif hasattr(auth, "require_auth"):
-    auth.require_auth()
 
-# Lấy thông tin user an toàn
-if hasattr(auth, "current_user"):
-    user = auth.current_user()
-else:
-    user = {"username": "admin", "role": "admin"}
-
-if hasattr(auth, "is_admin"):
-    admin = auth.is_admin()
-else:
-    admin = True
+user = auth.current_user() if hasattr(auth, "current_user") else {"username": "admin", "role": "admin"}
+admin = auth.is_admin() if hasattr(auth, "is_admin") else True
 
 
 @st.cache_data(ttl=600, show_spinner="Đang nạp dữ liệu...")
@@ -185,7 +170,8 @@ with st.sidebar:
         st.image(str(LOGO_PATH), width=90)
     st.markdown(f"**{user['username']}** · `{user['role']}`")
     if st.button("Đăng xuất"):
-        auth.logout()
+        if hasattr(auth, "logout"):
+            auth.logout()
     st.divider()
     st.header("Bộ lọc")
 
@@ -237,9 +223,9 @@ if df.empty:
     st.stop()
 
 prod = du.product_table(df)
-tab_names = ["Tong quan", "Du lieu", "Power BI", "Ket qua mo hinh"]
+tab_names = ["📊 Tổng quan", "🗂️ Dữ liệu", "📈 Power BI", "🤖 Kết quả mô hình"]
 if admin:
-    tab_names.append("Quan tri")
+    tab_names.append("🔧 Quản trị")
 tabs = st.tabs(tab_names)
 
 
