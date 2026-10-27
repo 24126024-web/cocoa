@@ -79,27 +79,70 @@ def _read_table(path: Path) -> pd.DataFrame:
     return pd.read_csv(path) if path.suffix.lower() == ".csv" else pd.read_excel(path)
 
 def load_base() -> pd.DataFrame:
-    products = _read_table(PRODUCTS_FILE)
-    products = products.rename(columns={
-        "Lượt bán ( 30 ngày)": "Lượt bán",
-        "Tổng lượt đánh giá tích lũy": "Tổng lượt đánh giá",
-        "Doanh_Thu_Niem_Yet": "Doanh thu niêm yết",
-        "Trang_Thai_Mau": "Trạng thái mẫu"
+    """Gộp review Shopee + Hasaki về một bảng chuẩn."""
+    
+    # ---------------------------------------------------------
+    # 1. XỬ LÝ DỮ LIỆU SHOPEE (Từ file products_final.xlsx)
+    # ---------------------------------------------------------
+    sp = _read_table(PRODUCTS_FILE).reset_index(drop=True)
+    shopee = pd.DataFrame({
+        "rid": [f"SP-{i:05d}" for i in range(len(sp))],
+        "Nguồn": "Shopee",
+        "Mã SP": sp["Mã SP"],
+        "Tên sản phẩm": sp["Tên sản phẩm"],
+        "Giá bán": sp.get("Giá bán", pd.NA),
+        "Lượt bán": sp.get("Lượt bán ( 30 ngày)", pd.NA),
+        "Doanh thu 30 ngày": sp.get("Doanh thu 30 ngày", pd.NA),
+        "Số sao": sp.get("Số sao (review)", pd.NA), 
+        "Nội dung review": sp.get("Nội dung review", ""),
+        "Ngày review": sp.get("Ngày review", pd.NaT),
+        "Đã mua hàng": sp.get("Đã mua hàng", "Không"),
+    })
+
+    # ---------------------------------------------------------
+    # 2. XỬ LÝ DỮ LIỆU HASAKI (Từ file Reviews_final.xlsx)
+    # ---------------------------------------------------------
+    hs = _read_table(REVIEWS_FILE).reset_index(drop=True)
+    hasaki = pd.DataFrame({
+        "rid": hs["Review_ID"].astype(str),
+        "Nguồn": "Hasaki",
+        "Mã SP": hs["Mã SP"],
+        "Số sao": hs["Số sao (review)"],
+        "Nội dung review": hs["Nội dung review"],
+        "Ngày review": hs["Ngày review"],
+        "Đã mua hàng": hs["Đã mua hàng"],
     })
     
-    reviews = _read_table(REVIEWS_FILE)
-    reviews = reviews.rename(columns={
-        "Review_ID": "rid",
-        "Số sao (review)": "Số sao",
-        "Nội dung review": "Nội dung review",
-        "Ngày review": "Ngày review",
-        "Đã mua hàng": "Đã mua hàng",
-        "Sentiment": "Cảm xúc"
-    })
-    reviews["rid"] = reviews["rid"].astype(str)
+    # Lấy thông tin sản phẩm từ products_final để merge sang Hasaki
+    prod_cols = ["Tên sản phẩm", "Giá bán", "Lượt bán", "Doanh thu 30 ngày"]
+    hp = _read_table(PRODUCTS_FILE).drop_duplicates("Mã SP")
+    hp = hp.rename(columns={c: "Lượt bán" for c in hp.columns if c.startswith("Lượt bán")})
+    keep = ["Mã SP"] + [c for c in prod_cols if c in hp.columns]
+    
+    hasaki = hasaki.merge(hp[keep], on="Mã SP", how="left")
+    
+    for c in prod_cols:
+        if c not in hasaki.columns:
+            hasaki[c] = pd.NA
+    hasaki["Tên sản phẩm"] = hasaki["Tên sản phẩm"].fillna("Hasaki #" + hasaki["Mã SP"].astype(str))
 
-    prod_cols = ["Mã SP", "Tên sản phẩm", "Giá bán", "Giá gốc", "Lượt bán", "Doanh thu 30 ngày", "Category"]
-    prod_cols = [c for c in prod_cols if c in products.columns]
+    # ---------------------------------------------------------
+    # 3. GỘP LẠI THÀNH 1 BẢNG
+    # ---------------------------------------------------------
+    df = pd.concat([shopee, hasaki[shopee.columns]], ignore_index=True)
+    
+    df["Ngày review"] = pd.to_datetime(df["Ngày review"], errors="coerce")
+    df["Tháng"] = df["Ngày review"].dt.to_period("M").dt.to_timestamp()
+    df["Nội dung review"] = df["Nội dung review"].fillna("").astype(str)
+    
+    for c in ("Giá bán", "Lượt bán", "Doanh thu 30 ngày"):
+        df[c] = pd.to_numeric(df[c], errors="coerce")
+        
+    df["Hạng mục"] = df["Tên sản phẩm"].map(classify_category)
+    df["Dòng sản phẩm"] = df["Tên sản phẩm"].map(classify_line)
+    df["Cảm xúc"] = df["Số sao"].map(sentiment_from_star)
+    
+    return df
     
     df = reviews.merge(products[prod_cols], on="Mã SP", how="left")
     df["Nguồn"] = "Hasaki"
