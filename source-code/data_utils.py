@@ -12,17 +12,30 @@ import pandas as pd
 
 HERE = Path(__file__).resolve().parent
 
-# Tìm thư mục dataset (ưu tiên thư mục dataset nằm cạnh source-code, nếu không có thì tìm trong source-code)
-DATA_DIR = HERE.parent / "dataset"
-if not DATA_DIR.exists():
-    DATA_DIR = HERE / "dataset"
+# --- TỰ ĐỘNG DÒ TÌM FILE (Dành cho cả máy tính và Streamlit Cloud) ---
+def _find_file(filename: str) -> Path:
+    """Tìm file ở thư mục hiện tại, thư mục cha, hoặc thư mục dataset."""
+    search_paths = [
+        HERE / filename,
+        HERE / "dataset" / filename,
+        HERE.parent / filename,
+        HERE.parent / "dataset" / filename,
+    ]
+    for p in search_paths:
+        if p.exists():
+            return p
+    # Nếu không thấy, mặc định trả về đường dẫn trong thư mục dataset để báo lỗi rõ ràng
+    return HERE / "dataset" / filename
 
-# Khai báo chính xác 2 file bạn muốn dùng
-PRODUCTS_FILE = DATA_DIR / "products_final.xlsx"
-REVIEWS_FILE = DATA_DIR / "Reviews_final.xlsx"
+PRODUCTS_FILE = _find_file("products_final.xlsx")
+REVIEWS_FILE = _find_file("Reviews_final.xlsx")
 
-DELETED_FILE = DATA_DIR / "deleted_rows.json"
-MODEL_DIR = DATA_DIR / "model_outputs"
+# Thư mục lưu trữ trạng thái xóa
+DELETED_FILE = HERE / "dataset" / "deleted_rows.json"
+if not DELETED_FILE.parent.exists():
+    DELETED_FILE = HERE / "deleted_rows.json"
+    
+MODEL_DIR = HERE / "dataset" / "model_outputs"
 
 UNKNOWN_CAT = "Chưa phân loại"
 
@@ -33,7 +46,6 @@ def _norm(s: str) -> str:
 
 
 def classify_category(name: str) -> str:
-    """Hạng mục: Chăm sóc da mặt / tóc / cơ thể / môi."""
     n = _norm(name)
     if n.startswith("hasaki #"):
         return UNKNOWN_CAT
@@ -47,7 +59,6 @@ def classify_category(name: str) -> str:
 
 
 def classify_line(name: str) -> str:
-    """Dòng sản phẩm theo thành phần chủ đạo (dùng cho biểu đồ tròn)."""
     n = _norm(name).replace("nước hoa hồng", "")
     if n.startswith("hasaki #"):
         return UNKNOWN_CAT
@@ -68,151 +79,11 @@ def sentiment_from_star(s: int) -> str:
 
 # ---------------------------------------------------------------- nạp dữ liệu
 def data_signature() -> tuple:
-    """Thời điểm sửa file dữ liệu — dùng làm khóa cache."""
     return tuple(f.stat().st_mtime if f.exists() else 0
                  for f in (PRODUCTS_FILE, REVIEWS_FILE))
 
 
 def _read_table(path: Path) -> pd.DataFrame:
     if not path.exists():
-        raise FileNotFoundError(f"Không tìm thấy file tại: {path}. Bạn hãy kiểm tra lại xem file đã nằm đúng trong thư mục dataset chưa nhé.")
+        raise FileNotFoundError(f"Lỗi: Không tìm thấy file tại {path}. Bạn hãy kiểm tra lại trên GitHub/Streamlit Cloud xem file đã được upload đúng thư mục chưa.")
     return pd.read_csv(path) if path.suffix.lower() == ".csv" else pd.read_excel(path)
-
-
-def load_base() -> pd.DataFrame:
-    """Gộp review và sản phẩm về một bảng chuẩn."""
-    
-    # 1. Đọc file products_final.xlsx
-    products = _read_table(PRODUCTS_FILE)
-    # Chuẩn hóa tên cột
-    products = products.rename(columns={
-        "Lượt bán ( 30 ngày)": "Lượt bán",
-        "Tổng lượt đánh giá tích lũy": "Tổng lượt đánh giá",
-        "Doanh_Thu_Niem_Yet": "Doanh thu niêm yết",
-        "Trang_Thai_Mau": "Trạng thái mẫu"
-    })
-    
-    # 2. Đọc file Reviews_final.xlsx
-    reviews = _read_table(REVIEWS_FILE)
-    reviews = reviews.rename(columns={
-        "Review_ID": "rid",
-        "Số sao (review)": "Số sao",
-        "Nội dung review": "Nội dung review",
-        "Ngày review": "Ngày review",
-        "Đã mua hàng": "Đã mua hàng",
-        "Sentiment": "Cảm xúc"
-    })
-    reviews["rid"] = reviews["rid"].astype(str)
-
-    # 3. Merge 2 file theo Mã SP
-    prod_cols = ["Mã SP", "Tên sản phẩm", "Giá bán", "Giá gốc", "Lượt bán", "Doanh thu 30 ngày", "Category"]
-    prod_cols = [c for c in prod_cols if c in products.columns]
-    
-    df = reviews.merge(products[prod_cols], on="Mã SP", how="left")
-    
-    # Gán nguồn mặc định
-    df["Nguồn"] = "Hasaki"
-
-    # Điền các giá trị thiếu
-    for c in ("Giá bán", "Lượt bán", "Doanh thu 30 ngày"):
-        if c not in df.columns:
-            df[c] = pd.NA
-        df[c] = pd.to_numeric(df[c], errors="coerce")
-        
-    df["Tên sản phẩm"] = df["Tên sản phẩm"].fillna("Hasaki #" + df["Mã SP"].astype(str))
-
-    # Xử lý ngày tháng
-    df["Ngày review"] = pd.to_datetime(df["Ngày review"], errors="coerce")
-    df["Tháng"] = df["Ngày review"].dt.to_period("M").dt.to_timestamp()
-    df["Nội dung review"] = df["Nội dung review"].fillna("").astype(str)
-
-    # 4. Phân loại
-    df["Hạng mục"] = df["Tên sản phẩm"].map(classify_category)
-    df["Dòng sản phẩm"] = df["Tên sản phẩm"].map(classify_line)
-    
-    if "Cảm xúc" not in df.columns or df["Cảm xúc"].isna().all():
-        df["Cảm xúc"] = df["Số sao"].map(sentiment_from_star)
-    else:
-        df["Cảm xúc"] = df["Cảm xúc"].fillna(df["Số sao"].map(sentiment_from_star))
-
-    # Bỏ các cột không cần thiết
-    drop_cols = [c for c in ["ChuaMuaHang", "ReviewNgan"] if c in df.columns]
-    if drop_cols:
-        df = df.drop(columns=drop_cols)
-
-    return df
-
-
-# ---------------------------------------------------------------- xóa mềm
-def load_deleted() -> list[dict]:
-    if DELETED_FILE.exists():
-        try:
-            return json.loads(DELETED_FILE.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            return []
-    return []
-
-
-def delete_rows(rids: list[str], by: str) -> int:
-    log = load_deleted()
-    existing = {d["rid"] for d in log}
-    now = datetime.now().isoformat(timespec="seconds")
-    new = [{"rid": r, "by": by, "at": now} for r in rids if r not in existing]
-    DELETED_FILE.write_text(json.dumps(log + new, ensure_ascii=False, indent=1), encoding="utf-8")
-    return len(new)
-
-
-def restore_all() -> None:
-    if DELETED_FILE.exists():
-        DELETED_FILE.unlink()
-
-
-def apply_deletions(df: pd.DataFrame) -> pd.DataFrame:
-    gone = {d["rid"] for d in load_deleted()}
-    return df[~df["rid"].isin(gone)] if gone else df
-
-
-# ---------------------------------------------------------------- tổng hợp
-def product_table(df: pd.DataFrame) -> pd.DataFrame:
-    if df.empty:
-        return pd.DataFrame()
-    g = df.groupby(["Nguồn", "Mã SP", "Tên sản phẩm", "Hạng mục", "Dòng sản phẩm"], observed=True, dropna=False)
-    out = g.agg(**{
-        "Giá bán": ("Giá bán", "first"),
-        "Lượt bán": ("Lượt bán", "first"),
-        "Doanh thu 30 ngày": ("Doanh thu 30 ngày", "first"),
-        "Số review": ("rid", "size"),
-        "Sao TB (review)": ("Số sao", "mean"),
-        "Số review 1★": ("Số sao", lambda s: int((s == 1).sum())),
-        "Số review 5★": ("Số sao", lambda s: int((s == 5).sum())),
-    }).reset_index()
-    out["Sao TB (review)"] = out["Sao TB (review)"].round(2)
-    return out.sort_values("Số review", ascending=False)
-
-
-def monthly_table(df: pd.DataFrame) -> pd.DataFrame:
-    d = df.dropna(subset=["Tháng"])
-    return (d.groupby(["Tháng", "Nguồn"]).size().rename("Số review").reset_index())
-
-
-# ---------------------------------------------------------------- xuất file
-_ILLEGAL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
-
-
-def _clean_for_excel(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.copy()
-    for c in df.select_dtypes(include=["object", "string"]).columns:
-        df[c] = df[c].map(lambda v: _ILLEGAL.sub("", v) if isinstance(v, str) else v)
-    return df
-
-
-def to_csv_bytes(df: pd.DataFrame) -> bytes:
-    return df.to_csv(index=False).encode("utf-8-sig")
-
-
-def to_excel_bytes(sheets: dict[str, pd.DataFrame]) -> bytes:
-    buf = io.BytesIO()
-    with pd.ExcelWriter(buf, engine="openpyxl") as xw:
-        for name, frame in sheets.items():
-            _clean_for_excel(frame).to_excel(xw, sheet_name=name[:31], index=False)
-    return buf.getvalue()
