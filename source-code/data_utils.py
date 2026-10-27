@@ -12,15 +12,13 @@ import pandas as pd
 
 HERE = Path(__file__).resolve().parent
 
-# --- TỰ ĐỘNG DÒ TÌM FILE ---
-# --- TỰ ĐỘNG DÒ TÌM FILE (SỬA LỖI ĐƯỜNG DẪN TRÊN CLOUD) ---
 def _find_file(filename: str) -> Path:
     search_paths = [
         HERE / filename,
         HERE / "dataset" / filename,
         HERE.parent / filename,
         HERE.parent / "dataset" / filename,
-        HERE.parent / "source-code" / "dataset" / filename, # Thêm đường dẫn này để tìm đúng thư mục trên Cloud
+        HERE.parent / "source-code" / "dataset" / filename, # Dành cho Streamlit Cloud
     ]
     for p in search_paths:
         if p.exists():
@@ -81,9 +79,7 @@ def _read_table(path: Path) -> pd.DataFrame:
 def load_base() -> pd.DataFrame:
     """Gộp review Shopee + Hasaki về một bảng chuẩn."""
     
-    # ---------------------------------------------------------
-    # 1. XỬ LÝ DỮ LIỆU SHOPEE (Từ file products_final.xlsx)
-    # ---------------------------------------------------------
+    # --- 1. XỬ LÝ DỮ LIỆU SHOPEE (Từ file products_final.xlsx) ---
     sp = _read_table(PRODUCTS_FILE).reset_index(drop=True)
     shopee = pd.DataFrame({
         "rid": [f"SP-{i:05d}" for i in range(len(sp))],
@@ -99,9 +95,7 @@ def load_base() -> pd.DataFrame:
         "Đã mua hàng": sp.get("Đã mua hàng", "Không"),
     })
 
-    # ---------------------------------------------------------
-    # 2. XỬ LÝ DỮ LIỆU HASAKI (Từ file Reviews_final.xlsx)
-    # ---------------------------------------------------------
+    # --- 2. XỬ LÝ DỮ LIỆU HASAKI (Từ file Reviews_final.xlsx) ---
     hs = _read_table(REVIEWS_FILE).reset_index(drop=True)
     hasaki = pd.DataFrame({
         "rid": hs["Review_ID"].astype(str),
@@ -113,22 +107,18 @@ def load_base() -> pd.DataFrame:
         "Đã mua hàng": hs["Đã mua hàng"],
     })
     
-    # Lấy thông tin sản phẩm từ products_final để merge sang Hasaki
     prod_cols = ["Tên sản phẩm", "Giá bán", "Lượt bán", "Doanh thu 30 ngày"]
     hp = _read_table(PRODUCTS_FILE).drop_duplicates("Mã SP")
     hp = hp.rename(columns={c: "Lượt bán" for c in hp.columns if c.startswith("Lượt bán")})
     keep = ["Mã SP"] + [c for c in prod_cols if c in hp.columns]
     
     hasaki = hasaki.merge(hp[keep], on="Mã SP", how="left")
-    
     for c in prod_cols:
         if c not in hasaki.columns:
             hasaki[c] = pd.NA
     hasaki["Tên sản phẩm"] = hasaki["Tên sản phẩm"].fillna("Hasaki #" + hasaki["Mã SP"].astype(str))
 
-    # ---------------------------------------------------------
-    # 3. GỘP LẠI THÀNH 1 BẢNG
-    # ---------------------------------------------------------
+    # --- 3. GỘP LẠI ---
     df = pd.concat([shopee, hasaki[shopee.columns]], ignore_index=True)
     
     df["Ngày review"] = pd.to_datetime(df["Ngày review"], errors="coerce")
@@ -140,35 +130,14 @@ def load_base() -> pd.DataFrame:
         
     df["Hạng mục"] = df["Tên sản phẩm"].map(classify_category)
     df["Dòng sản phẩm"] = df["Tên sản phẩm"].map(classify_line)
-    df["Cảm xúc"] = df["Số sao"].map(sentiment_from_star)
     
-    return df
+    # SỬA LỖI TẠI ĐÂY: Bỏ qua các giá trị NaN
+    def safe_sentiment(s):
+        if pd.isna(s):
+            return pd.NA
+        return sentiment_from_star(s)
+    df["Cảm xúc"] = df["Số sao"].apply(safe_sentiment)
     
-    df = reviews.merge(products[prod_cols], on="Mã SP", how="left")
-    df["Nguồn"] = "Hasaki"
-
-    for c in ("Giá bán", "Lượt bán", "Doanh thu 30 ngày"):
-        if c not in df.columns:
-            df[c] = pd.NA
-        df[c] = pd.to_numeric(df[c], errors="coerce")
-        
-    df["Tên sản phẩm"] = df["Tên sản phẩm"].fillna("Hasaki #" + df["Mã SP"].astype(str))
-    df["Ngày review"] = pd.to_datetime(df["Ngày review"], errors="coerce")
-    df["Tháng"] = df["Ngày review"].dt.to_period("M").dt.to_timestamp()
-    df["Nội dung review"] = df["Nội dung review"].fillna("").astype(str)
-
-    df["Hạng mục"] = df["Tên sản phẩm"].map(classify_category)
-    df["Dòng sản phẩm"] = df["Tên sản phẩm"].map(classify_line)
-    
-    if "Cảm xúc" not in df.columns or df["Cảm xúc"].isna().all():
-        df["Cảm xúc"] = df["Số sao"].map(sentiment_from_star)
-    else:
-        df["Cảm xúc"] = df["Cảm xúc"].fillna(df["Số sao"].map(sentiment_from_star))
-
-    drop_cols = [c for c in ["ChuaMuaHang", "ReviewNgan"] if c in df.columns]
-    if drop_cols:
-        df = df.drop(columns=drop_cols)
-
     return df
 
 def load_deleted() -> list[dict]:
