@@ -16,9 +16,10 @@ import streamlit.components.v1 as components
 import auth
 import data_utils as du
 
+# Tìm Logo
 LOGO_PATH = getattr(auth, "LOGO", du.HERE / "logo.png")
-if not isinstance(LOGO_PATH, Path):
-    LOGO_PATH = du.HERE / "logo.png"
+if not isinstance(LOGO_PATH, Path) or not LOGO_PATH.exists():
+    LOGO_PATH = du.HERE / "dataset" / "logo.png"
 
 st.set_page_config(
     page_title="Cocoon Analytics", 
@@ -27,7 +28,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# CUSTOM CSS DASHBOARD EXECUTIVE UI (THIẾT KẾ MỚI)
+# CUSTOM CSS DASHBOARD EXECUTIVE UI
 # ==========================================
 st.markdown("""
 <style>
@@ -41,14 +42,12 @@ st.markdown("""
         background-color: #f4efe6 !important;
     }
 
-    /* Tiêu đề ứng dụng */
     h1 {
         color: #1b4332 !important;
         font-weight: 800 !important;
         letter-spacing: -0.5px;
     }
 
-    /* Định dạng Metric KPI Cards */
     div[data-testid="stMetric"] {
         background-color: #ffffff;
         border-radius: 16px;
@@ -75,7 +74,6 @@ st.markdown("""
         color: #1b4332 !important;
     }
 
-    /* Container cho Biểu đồ & Thống kê */
     div[data-testid="stPlotlyChart"] {
         background-color: #ffffff;
         border-radius: 16px;
@@ -84,7 +82,6 @@ st.markdown("""
         border: 1px solid rgba(27, 67, 50, 0.08);
     }
 
-    /* Tab navigation styling */
     button[data-baseweb="tab"] {
         font-weight: 600 !important;
         font-size: 15px !important;
@@ -96,7 +93,6 @@ st.markdown("""
         border-bottom-color: #1b4332 !important;
     }
 
-    /* Custom Sidebar */
     section[data-testid="stSidebar"] {
         background-color: #0d1e16 !important;
         color: #ffffff;
@@ -108,7 +104,6 @@ st.markdown("""
         color: #ffffff !important;
     }
 
-    /* Nút đăng xuất & Button trong sidebar */
     section[data-testid="stSidebar"] .stButton > button {
         background-color: rgba(255, 255, 255, 0.1) !important;
         color: #ffffff !important;
@@ -122,7 +117,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# BẢNG MÀU CHUẨN COCOON / HASAKI / SHOPEE
 COLOR_DISCRETE = ["#1b4332", "#2d6a4f", "#40916c", "#52b788", "#74c69d", "#b7e4c7"]
 MAP_SOURCES = {"Shopee": "#ee4d2d", "Hasaki": "#117a50"}
 
@@ -143,7 +137,7 @@ def style_plotly_figure(fig, title=""):
 
 ALLOW_USER_EXPORT = False
 
-# Gọi cổng đăng nhập auth
+# Gọi cổng đăng nhập chính thức
 if hasattr(auth, "login_gate"):
     auth.login_gate()
 elif hasattr(auth, "login"):
