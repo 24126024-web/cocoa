@@ -4,7 +4,9 @@ Chạy:  streamlit run app.py
 """
 from __future__ import annotations
 
+import base64
 import os
+from pathlib import Path
 
 import pandas as pd
 from PIL import Image
@@ -21,12 +23,253 @@ st.set_page_config(page_title="Cocoon Analytics", page_icon=Image.open(LOGO_PATH
 # Đặt True nếu muốn tài khoản User cũng được tải file (mặc định: chỉ Admin).
 ALLOW_USER_EXPORT = False
 
+# -----------------------------------------------------------------------------
+# 1. HELPER CHUYỂN LOGO SANG BASE64 CHO CSS
+# -----------------------------------------------------------------------------
+def get_base64_of_bin_file(bin_file):
+    p = Path(bin_file)
+    if p.exists():
+        with open(p, 'rb') as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    return ""
 
+logo_b64 = get_base64_of_bin_file(LOGO_PATH)
 
-auth.login_gate()
+# -----------------------------------------------------------------------------
+# 2. XỬ LÝ ĐĂNG NHẬP / TÙY CHỈNH GIAO DIỆN SIGN IN CHUẨN DESIGN SYSTEM
+# -----------------------------------------------------------------------------
+# Kiểm tra nếu chưa đăng nhập -> Hiển thị Form Đăng Nhập Tùy Chỉnh
+if not st.session_state.get("authenticated", False):
+    st.markdown(f"""
+    <style>
+    /* Ẩn Header, Footer & Sidebar khi ở màn hình đăng nhập */
+    [data-testid="stSidebar"] {{ display: none !important; }}
+    header {{ visibility: hidden !important; }}
+    footer {{ visibility: hidden !important; }}
+    
+    .stApp {{
+        background: #111e16 !important;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+    }}
+    
+    /* Login Wrapper (Container 2 cột) */
+    .login-wrapper {{
+        display: flex;
+        width: 880px;
+        max-width: 95vw;
+        min-height: 500px;
+        background: #F8F5EE;
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+        margin: auto;
+    }}
+    
+    /* Khung Bên Trái: Banner / Branding Panel */
+    .login-left {{
+        flex: 1;
+        background: linear-gradient(135deg, #1A4D2E 0%, #11331E 100%);
+        padding: 40px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: #FFFFFF;
+        text-align: center;
+        position: relative;
+    }}
+    
+    .login-left img.logo {{
+        width: 110px;
+        margin-bottom: 20px;
+        filter: drop-shadow(0px 4px 8px rgba(0,0,0,0.3));
+    }}
+    
+    .login-left h2 {{
+        font-size: 26px;
+        font-weight: 700;
+        margin-bottom: 10px;
+        color: #FFFFFF !important;
+    }}
+    
+    .login-left p {{
+        font-size: 13.5px;
+        color: #D1E2D6;
+        margin-bottom: 25px;
+        line-height: 1.5;
+    }}
+    
+    .btn-outline-signin {{
+        border: 1.5px solid #FFFFFF;
+        background: transparent;
+        color: #FFFFFF;
+        padding: 8px 30px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 13px;
+        letter-spacing: 1px;
+    }}
+    
+    .brand-footer {{
+        position: absolute;
+        bottom: 20px;
+        font-size: 10px;
+        letter-spacing: 1px;
+        color: rgba(255,255,255,0.6);
+    }}
+
+    /* Khung Bên Phải: Form Đăng Nhập */
+    .login-right-container {{
+        flex: 1.1;
+        background: #F8F5EE;
+        padding: 45px 40px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }}
+    
+    .login-right-container h1 {{
+        color: #1A4D2E !important;
+        font-size: 30px;
+        font-weight: 700;
+        margin-bottom: 4px;
+        text-transform: lowercase;
+    }}
+    
+    .login-right-container p.sub-title {{
+        color: #666666;
+        font-size: 13.5px;
+        margin-bottom: 25px;
+    }}
+    
+    /* Style cho Ô nhập liệu */
+    div[data-baseweb="input"] {{
+        background-color: #FFFFFF !important;
+        border: 1px solid #2E6F40 !important;
+        border-radius: 12px !important;
+    }}
+    
+    div[data-baseweb="input"] input {{
+        color: #1A4D2E !important;
+    }}
+    
+    /* Style cho Nút Bấm Đăng Nhập */
+    .stButton > button {{
+        background: #1A4D2E !important;
+        color: #FFFFFF !important;
+        border-radius: 22px !important;
+        padding: 10px 0 !important;
+        font-weight: 700 !important;
+        font-size: 14px !important;
+        border: none !important;
+        width: 100% !important;
+        box-shadow: 0 4px 12px rgba(26, 77, 46, 0.3) !important;
+        transition: all 0.3s ease !important;
+    }}
+    
+    .stButton > button:hover {{
+        background: #11331E !important;
+        box-shadow: 0 6px 16px rgba(26, 77, 46, 0.4) !important;
+    }}
+    </style>
+    """, unsafe_allow_html=True)
+
+    c_left, c_mid, c_right = st.columns([1, 8, 1])
+    with c_mid:
+        st.markdown(f"""
+        <div class="login-wrapper">
+            <div class="login-left">
+                {'<img src="data:image/png;base64,' + logo_b64 + '" class="logo"/>' if logo_b64 else '🌿'}
+                <h2>Welcome Back!</h2>
+                <p>To stay connected with us please login with your personal info</p>
+                <div class="btn-outline-signin">SIGN IN</div>
+                <div class="brand-footer">COCOON ORIGINAL VIETNAM | NATURALLY CRAFTED</div>
+            </div>
+            <div class="login-right-container">
+                <h1>welcome</h1>
+                <p class="sub-title">Login in to your account to continue</p>
+        """, unsafe_allow_html=True)
+        
+        # Form đăng nhập tương thích với auth.py
+        auth.login_gate()
+
+        st.markdown("""
+                <div style="text-align: center; margin-top: 15px; font-size: 13px; color: #666666;">
+                    Don't have an account? <a href="#" style="color: #1A4D2E; font-weight: 700; text-decoration: none;">Sign up</a>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    st.stop()
+
+# -----------------------------------------------------------------------------
+# 3. TRANG DASHBOARD CHÍNH (Đã đăng nhập)
+# -----------------------------------------------------------------------------
 user = auth.current_user()
 admin = auth.is_admin()
 
+# Theme CSS cho Dashboard
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+html, body, [class*="css"] {
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+}
+
+.stApp {
+    background-color: #F8F5EE !important;
+}
+
+/* Sidebar Styling */
+[data-testid="stSidebar"] {
+    background: #1A4D2E !important;
+    border-right: 1px solid #11331E;
+}
+[data-testid="stSidebar"] *, [data-testid="stSidebar"] label, [data-testid="stSidebar"] span {
+    color: #F8F5EE !important;
+}
+
+/* Metric Card Styling */
+div[data-testid="metric-container"] {
+    background: #FFFFFF;
+    border-radius: 16px;
+    padding: 16px 20px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+}
+[data-testid="stMetricLabel"] {
+    color: #64748B !important;
+    font-weight: 600 !important;
+    font-size: 0.85rem !important;
+}
+[data-testid="stMetricValue"] {
+    color: #1A4D2E !important;
+    font-weight: 700 !important;
+}
+
+/* Tab Styling */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 8px;
+}
+.stTabs [data-baseweb="tab"] {
+    background-color: #EFECE6;
+    border-radius: 8px 8px 0px 0px;
+    padding: 8px 16px;
+    color: #1A4D2E;
+    font-weight: 500;
+}
+.stTabs [aria-selected="true"] {
+    background-color: #1A4D2E !important;
+    color: #FFFFFF !important;
+    font-weight: 600;
+}
+</style>
+""", unsafe_allow_html=True)
 
 
 @st.cache_data(show_spinner="Đang nạp dữ liệu…")
@@ -41,7 +284,6 @@ def fmt_int(x) -> str:
     return "—" if pd.isna(x) else f"{int(x):,}".replace(",", ".")
 
 
-
 with st.sidebar:
     st.image(str(LOGO_PATH), width=90)
     st.markdown(f"👤 **{user['username']}** · `{user['role']}`")
@@ -53,17 +295,17 @@ with st.sidebar:
 source = st.sidebar.selectbox("Nền tảng", ["Tất cả", "Shopee", "Hasaki"])
 df = base if source == "Tất cả" else base[base["Nguồn"] == source]
 
-categories = ["Tất cả"] + sorted(df["Hạng mục"].unique())
+categories = ["Tất cả"] + sorted(df["Hạng mục"].dropna().unique())
 category = st.sidebar.selectbox("Hạng mục", categories)
 if category != "Tất cả":
     df = df[df["Hạng mục"] == category]
 
-lines = ["Tất cả"] + sorted(df["Dòng sản phẩm"].unique())
+lines = ["Tất cả"] + sorted(df["Dòng sản phẩm"].dropna().unique())
 line = st.sidebar.selectbox("Dòng sản phẩm", lines)
 if line != "Tất cả":
     df = df[df["Dòng sản phẩm"] == line]
 
-products = ["Tất cả"] + sorted(df["Tên sản phẩm"].unique())
+products = ["Tất cả"] + sorted(df["Tên sản phẩm"].dropna().unique())
 product = st.sidebar.selectbox("Sản phẩm", products)
 if product != "Tất cả":
     df = df[df["Tên sản phẩm"] == product]
@@ -84,6 +326,36 @@ if keyword.strip():
 st.sidebar.caption(f"{len(df):,} / {len(base):,} review sau khi lọc".replace(",", "."))
 if admin:
     st.sidebar.caption(f"📁 Dữ liệu: Đã tải")
+
+# --- KHỞI TẠO BẢNG MÀU CHUẨN ĐƯỢC PHÂN CHIA CHO HASAKI & SHOPEE ---
+COLOR_HASAKI = {
+    "primary": "#2D6844",
+    "sec1": "#4E9F6E",
+    "sec2": "#86C89B",
+    "sec3": "#C2EABD",
+    "accent": "#E8A838",
+    "pie": ["#2D6844", "#4E9F6E", "#86C89B", "#C2EABD", "#E8A838"]
+}
+
+COLOR_SHOPEE = {
+    "primary": "#EE4D2D",
+    "sec1": "#FF7337",
+    "sec2": "#FFA066",
+    "sec3": "#FFCFA8",
+    "accent": "#26A69A",
+    "pie": ["#EE4D2D", "#FF7337", "#FFA066", "#FFCFA8", "#26A69A"]
+}
+
+# Chọn màu linh hoạt theo bộ lọc nền tảng
+if source == "Hasaki":
+    active_primary = COLOR_HASAKI["primary"]
+    active_pie = COLOR_HASAKI["pie"]
+elif source == "Shopee":
+    active_primary = COLOR_SHOPEE["primary"]
+    active_pie = COLOR_SHOPEE["pie"]
+else:
+    active_primary = "#1A4D2E"
+    active_pie = ["#2D6844", "#EE4D2D", "#4E9F6E", "#FF7337", "#86C89B"]
 
 h1, h2 = st.columns([1, 12], vertical_alignment="center")
 h1.image(str(LOGO_PATH), width=70)
@@ -150,31 +422,64 @@ with tabs[0]:
     with g1:
         pie = (rev.groupby("Dòng sản phẩm")["Doanh thu 30 ngày"].sum().reset_index())
         if len(pie):
-            fig = px.pie(pie, names="Dòng sản phẩm", values="Doanh thu 30 ngày", hole=0.35,
-                         title="Cơ cấu doanh thu 30 ngày theo dòng sản phẩm")
+            fig = px.pie(
+                pie, 
+                names="Dòng sản phẩm", 
+                values="Doanh thu 30 ngày", 
+                hole=0.35,
+                title="Cơ cấu doanh thu 30 ngày theo dòng sản phẩm",
+                color_discrete_sequence=active_pie
+            )
+            fig.update_traces(textposition='inside', textinfo='percent+label')
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("Chưa có dữ liệu doanh thu để vẽ biểu đồ tròn.")
 
     with g2:
         mt = du.monthly_table(df)
-        fig = px.line(mt, x="Tháng", y="Số review", color="Nguồn", markers=True,
-                      title="Xu hướng số lượng review theo tháng")
+        if source == "Tất cả":
+            fig = px.line(
+                mt, x="Tháng", y="Số review", color="Nguồn", markers=True,
+                title="Xu hướng số lượng review theo tháng",
+                color_discrete_map={"Hasaki": COLOR_HASAKI["primary"], "Shopee": COLOR_SHOPEE["primary"]}
+            )
+        else:
+            fig = px.line(
+                mt, x="Tháng", y="Số review", markers=True,
+                title="Xu hướng số lượng review theo tháng",
+                color_discrete_sequence=[active_primary]
+            )
+        fig.update_traces(line=dict(width=3))
         st.plotly_chart(fig, use_container_width=True)
 
     g3, g4 = st.columns(2)
     with g3:
         dist = df.groupby(["Số sao", "Nguồn"]).size().reset_index(name="Số review")
-        fig = px.bar(dist, x="Số sao", y="Số review", color="Nguồn", barmode="group",
-                     title="Phân bố số sao")
-        st.plotly_chart(fig, use_container_width=True)
-    with g4:
-        top = prod.nlargest(10, "Số review")
-        fig = px.bar(top, x="Số review", y="Tên sản phẩm", orientation="h",
-                     title="Top 10 sản phẩm theo số review")
-        fig.update_layout(yaxis={"categoryorder": "total ascending"})
+        if source == "Tất cả":
+            fig = px.bar(
+                dist, x="Số sao", y="Số review", color="Nguồn", barmode="group",
+                title="Phân bố số sao",
+                color_discrete_map={"Hasaki": COLOR_HASAKI["primary"], "Shopee": COLOR_SHOPEE["primary"]}
+            )
+        else:
+            fig = px.bar(
+                dist, x="Số sao", y="Số review",
+                title="Phân bố số sao",
+                color_discrete_sequence=[active_primary]
+            )
+        fig.update_traces(marker_cornerRadius=6)
         st.plotly_chart(fig, use_container_width=True)
 
+    with g4:
+        top = prod.nlargest(10, "Số review")
+        fig = px.bar(
+            top, x="Số review", y="Tên sản phẩm", orientation="h",
+            title="Top 10 sản phẩm theo số review",
+            color_discrete_sequence=[active_primary]
+        )
+        fig.update_traces(marker_cornerRadius=6)
+        fig.update_layout(yaxis={"categoryorder": "total ascending"})
+        st.plotly_chart(fig, use_container_width=True)
 
 
 with tabs[1]:
@@ -211,7 +516,6 @@ with tabs[1]:
         st.info("Chỉ tài khoản Admin được tải dữ liệu.")
 
 
-
 with tabs[2]:
     st.subheader("Dashboard Power BI")
     url = os.environ.get("POWERBI_EMBED_URL", "")
@@ -233,7 +537,6 @@ with tabs[2]:
             "Lưu ý: *Publish to web* công khai báo cáo với bất kỳ ai có link.")
 
 
-
 with tabs[3]:
     st.subheader("Kết quả mô hình (Giai đoạn 4)")
     st.caption("Đặt file kết quả vào `dataset/model_outputs/` — app tự hiển thị.")
@@ -252,7 +555,6 @@ with tabs[3]:
     if not found:
         st.info("Chưa có file kết quả. Tên file mong đợi: "
                 + ", ".join(f"`{k}`" for k in expected))
-
 
 
 if admin:
