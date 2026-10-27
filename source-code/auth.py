@@ -106,27 +106,22 @@ def _standardize_cols(df: pd.DataFrame) -> pd.DataFrame:
         return df
     df.columns = [str(c).strip() for c in df.columns]
     
-    # Tìm và chuẩn hóa cột Mã SP
     id_cols = [c for c in df.columns if _norm(c) in ("mã sp", "mã sản phẩm", "ma sp", "ma san pham", "product_id", "product id", "id_sp")]
     if id_cols:
         df = df.rename(columns={id_cols[0]: "Mã SP"})
         
-    # Tìm và chuẩn hóa cột Tên sản phẩm
     name_cols = [c for c in df.columns if _norm(c) in ("tên sản phẩm", "ten san pham", "product_name", "product name", "tên sp")]
     if name_cols:
         df = df.rename(columns={name_cols[0]: "Tên sản phẩm"})
         
-    # Tìm và chuẩn hóa cột Số sao
     star_cols = [c for c in df.columns if "sao" in _norm(c) or "rating" in _norm(c)]
     if star_cols:
         df = df.rename(columns={star_cols[0]: "Số sao"})
         
-    # Tìm và chuẩn hóa cột Nội dung review
     rev_cols = [c for c in df.columns if "nội dung" in _norm(c) or "review" in _norm(c) or "đánh giá" in _norm(c) or "comment" in _norm(c)]
     if rev_cols and "Nội dung review" not in df.columns:
         df = df.rename(columns={rev_cols[0]: "Nội dung review"})
         
-    # Tìm và chuẩn hóa cột Ngày review
     date_cols = [c for c in df.columns if "ngày" in _norm(c) or "date" in _norm(c) or "thời gian" in _norm(c)]
     if date_cols and "Ngày review" not in df.columns:
         df = df.rename(columns={date_cols[0]: "Ngày review"})
@@ -153,7 +148,6 @@ def load_base() -> pd.DataFrame:
         sp_p = _standardize_cols(_read_table(SHOPEE_PROD_FILE, sheet_name=sheet_sp))
         sp_r = _standardize_cols(_read_table(SHOPEE_REV_FILE))
 
-        # --- XỬ LÝ SHOPEE ---
         if not sp_r.empty:
             if "Mã SP" in sp_r.columns and "Mã SP" in sp_p.columns:
                 sp_merged = sp_r.merge(sp_p.drop_duplicates("Mã SP"), on="Mã SP", how="left", suffixes=("", "_prod"))
@@ -176,7 +170,6 @@ def load_base() -> pd.DataFrame:
         else:
             shopee_df = pd.DataFrame()
 
-        # --- XỬ LÝ HASAKI ---
         if not hk_r.empty:
             if "Mã SP" in hk_r.columns and "Mã SP" in hk_p.columns:
                 hk_merged = hk_r.merge(hk_p.drop_duplicates("Mã SP"), on="Mã SP", how="left", suffixes=("", "_prod"))
