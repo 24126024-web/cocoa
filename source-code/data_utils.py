@@ -125,7 +125,22 @@ def load_base() -> pd.DataFrame:
 
       
         })
+# Nạp Hasaki (Lấy tất cả sản phẩm từ hk_p làm gốc)
+        hk_merged = hk_p.merge(hk_r, on="Mã SP", how="left", suffixes=("", "_rev"))
 
+        hasaki_df = pd.DataFrame({
+            "rid": [f"HS-{i:06d}" for i in range(len(hk_merged))],
+            "Nguồn": "Hasaki",
+            "Mã SP": hk_merged["Mã SP"],
+            "Tên sản phẩm": hk_merged["Tên sản phẩm"].fillna("Sản phẩm Hasaki #" + hk_merged["Mã SP"].astype(str)),
+            "Giá bán": hk_merged["Giá bán"] if "Giá bán" in hk_merged.columns else pd.NA,
+            "Lượt bán": hk_merged["Lượt bán"] if "Lượt bán" in hk_merged.columns else pd.NA,
+            "Doanh thu 30 ngày": hk_merged["Doanh thu 30 ngày"] if "Doanh thu 30 ngày" in hk_merged.columns else pd.NA,
+            "Số sao": hk_merged["Số sao (review)"] if "Số sao (review)" in hk_merged.columns else (hk_merged["Số sao"] if "Số sao" in hk_merged.columns else 5),
+            "Nội dung review": hk_merged["Nội dung review"] if "Nội dung review" in hk_merged.columns else "",
+            "Ngày review": hk_merged["Ngày review"] if "Ngày review" in hk_merged.columns else pd.Timestamp.now(),
+            "Đã mua hàng": hk_merged["Đã mua hàng"] if "Đã mua hàng" in hk_merged.columns else "Có",
+        })
         # Nạp Hasaki
         all_prods = pd.concat([hk_p, sp_p], ignore_index=True).drop_duplicates("Mã SP")
         hk_merged = hk_r.merge(all_prods, on="Mã SP", how="left", suffixes=("", "_prod"))
