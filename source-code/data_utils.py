@@ -139,7 +139,7 @@ def load_base() -> pd.DataFrame:
             "Đã mua hàng": sp_merged["Đã mua hàng"] if "Đã mua hàng" in sp_merged.columns else "Có",
         })
 
-        # Nạp Hasaki (Lấy hk_p 84 sản phẩm làm gốc)
+        # Nạp Hasaki (Lấy hk_p làm gốc hiển thị đủ 84 sản phẩm)
         if not hk_p.empty:
             if not hk_r.empty and "Mã SP" in hk_r.columns:
                 hk_merged = hk_p.merge(hk_r, on="Mã SP", how="left", suffixes=("", "_rev"))
@@ -214,7 +214,7 @@ def apply_deletions(df: pd.DataFrame) -> pd.DataFrame:
     if "rid" not in df.columns:
         return df
 
-    log = log = load_deleted()
+    log = load_deleted()
     gone = {d["rid"] for d in log if isinstance(d, dict) and "rid" in d}
     return df[~df["rid"].isin(gone)] if gone else df
 
