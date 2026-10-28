@@ -4,6 +4,7 @@ Chạy:  streamlit run app.py
 """
 from __future__ import annotations
 
+import io
 import os
 from pathlib import Path
 
@@ -344,23 +345,67 @@ with tabs[1]:
     if len(df) > 2000:
         st.caption("Hiển thị 2.000 review mới nhất; bản xuất file (Admin) chứa đầy đủ.")
 
-    st.subheader("Kết xuất báo cáo")
+    # ---------------------------------------------------------
+    # KẾT XUẤT BÁO CÁO (CSV UTF-8-SIG & EXCEL MULTI-SHEET)
+    # ---------------------------------------------------------
+    st.markdown("---")
+    st.subheader("📥 Kết xuất báo cáo dữ liệu")
+
     if admin or ALLOW_USER_EXPORT:
-        summary = pd.DataFrame({
-            "Chỉ số": ["Số review", "Số sản phẩm", "Sao trung bình", "% tích cực (4-5 sao)", "% tiêu cực (1-2 sao)"],
-            "Giá trị": [len(df), len(prod), round(df["Số sao"].mean(), 2), round((df["Số sao"] >= 4).mean() * 100, 1), round((df["Số sao"] <= 2).mean() * 100, 1)],
+        # 1. Chuẩn bị bảng tóm tắt chỉ số KPI
+        summary_df = pd.DataFrame({
+            "Chỉ số": ["Tổng số review", "Tổng số sản phẩm", "Điểm sao trung bình", "Tỉ lệ tích cực (4-5 sao)", "Tỉ lệ tiêu cực (1-2 sao)"],
+            "Giá trị": [
+                len(df),
+                len(prod),
+                round(df["Số sao"].mean(), 2),
+                f"{round((df['Số sao'] >= 4).mean() * 100, 1)}%",
+                f"{round((df['Số sao'] <= 2).mean() * 100, 1)}%"
+            ],
         })
+
+        # Lọc bỏ các cột kỹ thuật nội bộ trước khi xuất file
+        clean_df = df.drop(columns=["rid", "Tháng"], errors="ignore")
+
+        # Chia 3 cột chứa 3 nút tải
         d1, d2, d3 = st.columns(3)
-        d1.download_button("Tai Review (CSV)", du.to_csv_bytes(df.drop(columns=["rid", "Tháng"])), "cocoon_reviews.csv", "text/csv")
-        d2.download_button("Tai San pham (CSV)", du.to_csv_bytes(prod), "cocoon_products.csv", "text/csv")
+
+        # Nút 1: Tải file CSV Review (mã hóa utf-8-sig hiển thị Tiếng Việt chuẩn)
+        csv_rev_bytes = clean_df.to_csv(index=False).encode("utf-8-sig")
+        d1.download_button(
+            label="📄 Tải Review (CSV)",
+            data=csv_rev_bytes,
+            file_name="cocoon_reviews.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+
+        # Nút 2: Tải file CSV Sản phẩm
+        csv_prod_bytes = prod.to_csv(index=False).encode("utf-8-sig")
+        d2.download_button(
+            label="📄 Tải Sản Phẩm (CSV)",
+            data=csv_prod_bytes,
+            file_name="cocoon_products.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+
+        # Nút 3: Tải file Excel (.xlsx) chứa 3 Sheet: Tóm tắt, Sản phẩm, Review
+        excel_buffer = io.BytesIO()
+        with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
+            summary_df.to_excel(writer, sheet_name="Tóm Tắt Chỉ Số", index=False)
+            prod.to_excel(writer, sheet_name="Danh Sách Sản Phẩm", index=False)
+            clean_df.to_excel(writer, sheet_name="Chi Tiết Review", index=False)
+
         d3.download_button(
-            "Tai Bao cao (Excel)",
-            du.to_excel_bytes({"Tóm tắt": summary, "Sản phẩm": prod, "Review": df.drop(columns=["rid", "Tháng"])}),
-            "cocoon_report.xlsx",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            label="📊 Tải Báo Cáo (Excel)",
+            data=excel_buffer.getvalue(),
+            file_name="cocoon_analytics_report.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
         )
     else:
-        st.info("Chỉ tài khoản Admin được tải dữ liệu.")
+        st.info("🔒 Tính năng tải dữ liệu hiện bị khóa bởi Quản trị viên.")
 
 
 with tabs[2]:
