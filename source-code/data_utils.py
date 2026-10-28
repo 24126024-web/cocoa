@@ -87,7 +87,7 @@ def sentiment_from_star(s) -> str:
 
 def data_signature() -> tuple:
     return tuple(
-        f.stat().st_mtime if f.exists() else 0
+        (str(f), f.stat().st_mtime, f.stat().st_size) if f.exists() else (str(f), 0, 0)
         for f in (HASAKI_PROD_FILE, HASAKI_REV_FILE, SHOPEE_PROD_FILE, SHOPEE_REV_FILE)
     )
 
