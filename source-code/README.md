@@ -1,4 +1,4 @@
-# Cocoon Analytics – Streamlit (Giai đoạn 5)
+# Cocoon Analytics – Streamlit 
 
 ## Chạy
 ```
