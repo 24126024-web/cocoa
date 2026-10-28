@@ -123,20 +123,7 @@ def load_base() -> pd.DataFrame:
         if "Lượt bán (30 ngày)" in hk_p.columns and "Lượt bán" not in hk_p.columns:
             hk_p = hk_p.rename(columns={"Lượt bán (30 ngày)": "Lượt bán"})
 
-        # Nạp Shopee
-        sp_merged = sp_r.merge(sp_p.drop_duplicates("Mã SP"), on="Mã SP", how="left", suffixes=("", "_prod"))
-        shopee_df = pd.DataFrame({
-            "rid": [f"SP-{i:06d}" for i in range(len(sp_merged))],
-            "Nguồn": "Shopee",
-            "Mã SP": sp_merged["Mã SP"],
-            "Tên sản phẩm": sp_merged["Tên sản phẩm"].fillna("Sản phẩm Shopee #" + sp_merged["Mã SP"].astype(str)),
-            "Giá bán": sp_merged["Giá bán"] if "Giá bán" in sp_merged.columns else pd.NA,
-            "Lượt bán": sp_merged["Lượt bán"] if "Lượt bán" in sp_merged.columns else pd.NA,
-            "Doanh thu 30 ngày": sp_merged["Doanh thu 30 ngày"] if "Doanh thu 30 ngày" in sp_merged.columns else pd.NA,
-            "Số sao": sp_merged["Số sao (review)"] if "Số sao (review)" in sp_merged.columns else 5,
-            "Nội dung review": sp_merged["Nội dung review"] if "Nội dung review" in sp_merged.columns else "",
-            "Ngày review": sp_merged["Ngày review"] if "Ngày review" in sp_merged.columns else pd.Timestamp.now(),
-            "Đã mua hàng": sp_merged["Đã mua hàng"] if "Đã mua hàng" in sp_merged.columns else "Có",
+      
         })
 
         # Nạp Hasaki
