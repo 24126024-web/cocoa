@@ -210,6 +210,24 @@ st.sidebar.caption(f"{int(df['Số sao'].notna().sum()):,} / {int(base['Số sao
 if admin:
     st.sidebar.caption("Dữ liệu: Đã tải")
 
+if admin:
+    with st.sidebar.expander("🔍 Kiểm tra nguồn dữ liệu"):
+        try:
+            for label, f in (("Hasaki - SP", du.HASAKI_PROD_FILE), ("Hasaki - Review", du.HASAKI_REV_FILE),
+                             ("Shopee - SP", du.SHOPEE_PROD_FILE), ("Shopee - Review", du.SHOPEE_REV_FILE)):
+                st.caption(f"{label}: {'✅' if f.exists() else '❌'} {f}")
+            _hp = du._clean_raw(du._read_table(du.HASAKI_PROD_FILE))
+            _hr = du._clean_raw(du._read_table(du.HASAKI_REV_FILE))
+            st.caption(f"File SP Hasaki: {len(_hp)} dòng, {_hp['Mã SP'].nunique() if len(_hp) else 0} mã SP")
+            st.caption(f"File Review Hasaki: {len(_hr)} dòng, {_hr['Mã SP'].nunique() if len(_hr) else 0} mã SP")
+            _hb = base[base["Nguồn"] == "Hasaki"]
+            st.caption(f"Sau khi nạp: {_hb['Mã SP'].nunique()} sản phẩm Hasaki")
+        except Exception as e:
+            st.caption(f"Không kiểm tra được: {e}")
+        if st.button("Xóa cache dữ liệu"):
+            st.cache_data.clear()
+            st.rerun()
+
 h1, h2 = st.columns([1, 12], vertical_alignment="center")
 if LOGO_PATH.exists():
     h1.image(str(LOGO_PATH), width=70)
@@ -220,20 +238,268 @@ if df.empty:
     st.warning("Không có dữ liệu phù hợp với bộ lọc hiện tại.")
     st.stop()
 
+prod = du.product_table(df)
+rv = df[df["Số sao"].notna()]   # chỉ các dòng có review thật
+tab_names = ["📊 Tổng quan", "🗂️ Dữ liệu", "📈 Power BI", "🤖 Kết quả mô hình"]
 if admin:
-    with st.sidebar.expander("🔍 Kiểm tra nguồn dữ liệu"):
-        for label, f in (("Hasaki - SP", du.HASAKI_PROD_FILE), ("Hasaki - Review", du.HASAKI_REV_FILE),
-                         ("Shopee - SP", du.SHOPEE_PROD_FILE), ("Shopee - Review", du.SHOPEE_REV_FILE)):
-            st.caption(f"{label}: {'✅' if f.exists() else '❌'} {f}")
-        _hp = du._clean_raw(du._read_table(du.HASAKI_PROD_FILE))
-        _hr = du._clean_raw(du._read_table(du.HASAKI_REV_FILE))
-        st.caption(f"File SP Hasaki: {len(_hp)} dòng, {_hp['Mã SP'].nunique() if len(_hp) else 0} mã SP")
-        st.caption(f"File Review Hasaki: {len(_hr)} dòng, {_hr['Mã SP'].nunique() if len(_hr) else 0} mã SP")
-        _hb = base[base["Nguồn"] == "Hasaki"]
-        st.caption(f"Sau khi nạp: {_hb['Mã SP'].nunique()} sản phẩm Hasaki")
-        if st.button("Xóa cache dữ liệu"):
-            st.cache_data.clear()
+    tab_names.append("🔧 Quản trị")
+tabs = st.tabs(tab_names)
+
+
+with tabs[0]:
+    k1, k2, k3, k4, k5 = st.columns(5)
+    k1.metric("Số sản phẩm", fmt_int(len(prod)))
+    k2.metric("Số review", fmt_int(len(rv)))
+    k3.metric("Sao trung bình", f"{rv['Số sao'].mean():.2f}" if len(rv) else "-")
+    k4.metric("Tỉ lệ tích cực (4-5 sao)", f"{(rv['Số sao'] >= 4).mean():.1%}" if len(rv) else "-")
+    k5.metric("Tỉ lệ tiêu cực (1-2 sao)", f"{(rv['Số sao'] <= 2).mean():.1%}" if len(rv) else "-")
+
+    st.write("")
+    st.subheader("Thống kê Min - Max")
+    c1, c2, c3 = st.columns(3)
+
+    def top_product(star: int):
+        s = df[df["Số sao"] == star].groupby("Tên sản phẩm").size()
+        return (s.idxmax(), int(s.max())) if len(s) else (None, 0)
+
+    p5, n5 = top_product(5)
+    p1, n1 = top_product(1)
+    with c1:
+        st.markdown("**Sản phẩm được 5 sao nhiều nhất**")
+        st.write(f"{p5} - {n5} lượt" if p5 else "Không có dữ liệu")
+        st.markdown("**Sản phẩm bị 1 sao nhiều nhất**")
+        st.write(f"{p1} - {n1} lượt" if p1 else "Không có review 1 sao trong bộ lọc")
+
+    monthly_all = df.dropna(subset=["Tháng"]).groupby("Tháng").size()
+    with c2:
+        st.markdown("**Tháng nhiều review nhất**")
+        if len(monthly_all):
+            st.write(f"{monthly_all.idxmax():%m/%Y} - {int(monthly_all.max())} review")
+            st.markdown("**Tháng ít review nhất**")
+            st.write(f"{monthly_all.idxmin():%m/%Y} - {int(monthly_all.min())} review")
+        st.caption("Dữ liệu không có doanh thu theo tháng nên dùng số review làm thước đo xu hướng mua.")
+
+    rev = prod.dropna(subset=["Doanh thu 30 ngày"])
+    rev = rev[rev["Doanh thu 30 ngày"] > 0]
+    with c3:
+        if len(rev):
+            hi = rev.loc[rev["Doanh thu 30 ngày"].idxmax()]
+            lo = rev.loc[rev["Doanh thu 30 ngày"].idxmin()]
+            st.markdown("**Sản phẩm doanh thu 30 ngày cao nhất**")
+            st.write(f"{hi['Tên sản phẩm']} - {fmt_int(hi['Doanh thu 30 ngày'])} d")
+            st.markdown("**Sản phẩm doanh thu 30 ngày thấp nhất**")
+            st.write(f"{lo['Tên sản phẩm']} - {fmt_int(lo['Doanh thu 30 ngày'])} d")
+        else:
+            st.markdown("**Doanh thu 30 ngày**")
+            st.write("Không có dữ liệu doanh thu (chỉ có ở Shopee).")
+
+    st.write("")
+    st.subheader("Biểu đồ phân tích")
+    g1, g2 = st.columns(2)
+
+    with g1:
+        rev_data = prod.copy()
+        if "Doanh thu 30 ngày" in rev_data.columns:
+            rev_data["Doanh thu 30 ngày"] = pd.to_numeric(rev_data["Doanh thu 30 ngày"], errors="coerce").fillna(0)
+            rev_valid = rev_data[rev_data["Doanh thu 30 ngày"] > 0]
+            pie = rev_valid.groupby("Dòng sản phẩm", as_index=False)["Doanh thu 30 ngày"].sum()
+        else:
+            pie = pd.DataFrame()
+
+        if not pie.empty and pie["Doanh thu 30 ngày"].sum() > 0:
+            fig = px.pie(
+                pie, 
+                names="Dòng sản phẩm", 
+                values="Doanh thu 30 ngày", 
+                hole=0.45, 
+                color_discrete_sequence=COLOR_DISCRETE
+            )
+            fig = style_plotly_figure(fig, "Cơ cấu doanh thu 30 ngày theo dòng sản phẩm")
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Chưa có dữ liệu doanh thu để vẽ biểu đồ tròn.")
+
+    with g2:
+        mt = du.monthly_table(df)
+        fig = px.line(
+            mt, 
+            x="Tháng", 
+            y="Số review", 
+            color="Nguồn", 
+            markers=True, 
+            color_discrete_map=MAP_SOURCES
+        )
+        fig = style_plotly_figure(fig, "Xu hướng số lượng review theo tháng")
+        st.plotly_chart(fig, use_container_width=True)
+
+    g3, g4 = st.columns(2)
+    with g3:
+        dist = df.groupby(["Số sao", "Nguồn"]).size().reset_index(name="Số review")
+        fig = px.bar(
+            dist, 
+            x="Số sao", 
+            y="Số review", 
+            color="Nguồn", 
+            barmode="group", 
+            color_discrete_map=MAP_SOURCES
+        )
+        fig = style_plotly_figure(fig, "Phân bố số sao")
+        st.plotly_chart(fig, use_container_width=True)
+
+    with g4:
+        top = prod.nlargest(10, "Số review")
+        fig = px.bar(
+            top, 
+            x="Số review", 
+            y="Tên sản phẩm", 
+            orientation="h", 
+            color_discrete_sequence=["#1b4332"]
+        )
+        fig = style_plotly_figure(fig, "Top 10 sản phẩm theo số review")
+        fig.update_layout(yaxis={"categoryorder": "total ascending"})
+        st.plotly_chart(fig, use_container_width=True)
+
+
+with tabs[1]:
+    st.subheader("Bảng sản phẩm")
+    st.dataframe(prod, use_container_width=True, hide_index=True)
+    st.subheader("Bảng review")
+    show = ["Nguồn", "Mã SP", "Tên sản phẩm", "Hạng mục", "Số sao", "Cảm xúc", "Nội dung review", "Ngày review", "Đã mua hàng"]
+    st.dataframe(rv[show].sort_values("Ngày review", ascending=False).head(2000), use_container_width=True, hide_index=True)
+    if len(rv) > 2000:
+        st.caption("Hiển thị 2.000 review mới nhất; bản xuất file (Admin) chứa đầy đủ.")
+
+    # ---------------------------------------------------------
+    # KẾT XUẤT BÁO CÁO (CSV UTF-8-SIG & EXCEL MULTI-SHEET)
+    # ---------------------------------------------------------
+    st.markdown("---")
+    st.subheader("📥 Kết xuất báo cáo dữ liệu")
+
+    if admin or ALLOW_USER_EXPORT:
+        # 1. Chuẩn bị bảng tóm tắt chỉ số KPI
+        summary_df = pd.DataFrame({
+            "Chỉ số": ["Tổng số review", "Tổng số sản phẩm", "Điểm sao trung bình", "Tỉ lệ tích cực (4-5 sao)", "Tỉ lệ tiêu cực (1-2 sao)"],
+            "Giá trị": [
+                len(rv),
+                len(prod),
+                round(rv["Số sao"].mean(), 2) if len(rv) else None,
+                f"{round((rv['Số sao'] >= 4).mean() * 100, 1)}%" if len(rv) else "-",
+                f"{round((rv['Số sao'] <= 2).mean() * 100, 1)}%" if len(rv) else "-"
+            ],
+        })
+
+        # Lọc bỏ các cột kỹ thuật nội bộ trước khi xuất file
+        clean_df = rv.drop(columns=["rid", "Tháng"], errors="ignore")
+
+        # Chia 3 cột chứa 3 nút tải
+        d1, d2, d3 = st.columns(3)
+
+        # Nút 1: Tải file CSV Review (mã hóa utf-8-sig hiển thị Tiếng Việt chuẩn)
+        csv_rev_bytes = clean_df.to_csv(index=False).encode("utf-8-sig")
+        d1.download_button(
+            label="📄 Tải Review (CSV)",
+            data=csv_rev_bytes,
+            file_name="cocoon_reviews.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+
+        # Nút 2: Tải file CSV Sản phẩm
+        csv_prod_bytes = prod.to_csv(index=False).encode("utf-8-sig")
+        d2.download_button(
+            label="📄 Tải Sản Phẩm (CSV)",
+            data=csv_prod_bytes,
+            file_name="cocoon_products.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+
+        # Nút 3: Tải file Excel (.xlsx) chứa 3 Sheet: Tóm tắt, Sản phẩm, Review
+        excel_buffer = io.BytesIO()
+        with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
+            summary_df.to_excel(writer, sheet_name="Tóm Tắt Chỉ Số", index=False)
+            prod.to_excel(writer, sheet_name="Danh Sách Sản Phẩm", index=False)
+            clean_df.to_excel(writer, sheet_name="Chi Tiết Review", index=False)
+
+        d3.download_button(
+            label="📊 Tải Báo Cáo (Excel)",
+            data=excel_buffer.getvalue(),
+            file_name="cocoon_analytics_report.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
+    else:
+        st.info("🔒 Tính năng tải dữ liệu hiện bị khóa bởi Quản trị viên.")
+
+
+with tabs[2]:
+    try:
+        from powerbi_dashboard import render_powerbi_dashboard
+        render_powerbi_dashboard(**get_powerbi_tables(du.data_signature()))
+    except ModuleNotFoundError:
+        st.error("Thiếu file `powerbi_dashboard.py` hoặc thư viện `plotly` - hãy đặt file cùng thư mục với app.py và thêm plotly vào requirements.txt.")
+    except Exception as e:
+        st.error(f"Không dựng được dashboard Power BI: {e}")
+
+
+with tabs[3]:
+    st.subheader("Kết quả mô hình (Giai đoạn 4)")
+    st.caption("Đặt file kết quả vào `dataset/model_outputs/` - app tự hiển thị.")
+    expected = {
+        "kmeans_clusters.csv": "K-Means: phân cụm khách hàng / review",
+        "sentiment_predictions.csv": "Dự đoán cảm xúc (Random Forest / Logistic Regression)",
+        "apriori_rules.csv": "Luật kết hợp Apriori (gợi ý combo)",
+    }
+    found = False
+    for fname, title in expected.items():
+        p = du.MODEL_DIR / fname
+        if p.exists():
+            found = True
+            with st.expander(f"{title} - {fname}", expanded=True):
+                st.dataframe(pd.read_csv(p), use_container_width=True, hide_index=True)
+    if not found:
+        st.info("Chưa có file kết quả. Tên file mong đợi: " + ", ".join(f"`{k}`" for k in expected))
+
+
+if admin:
+    with tabs[4]:
+        st.subheader("Quản trị dữ liệu")
+        st.caption("Xóa là *xóa mềm*: file dữ liệu gốc không bị sửa, có thể khôi phục.")
+
+        st.markdown("**1. Chọn từng review để xóa** (tối đa 300 dòng theo bộ lọc hiện tại)")
+        cols = ["rid", "Nguồn", "Tên sản phẩm", "Số sao", "Nội dung review"]
+        sample = rv[cols].head(300).copy()
+        sample.insert(0, "Xóa", False)
+        edited = st.data_editor(
+            sample,
+            hide_index=True,
+            use_container_width=True,
+            key="del_editor",
+            disabled=cols,
+            column_config={
+                "Xóa": st.column_config.CheckboxColumn("Xóa"),
+                "rid": st.column_config.TextColumn("ID")
+            }
+        )
+        picked = edited.loc[edited["Xóa"], "rid"].tolist()
+        if st.button(f"Xóa {len(picked)} review đã chọn", disabled=not picked):
+            n = du.delete_rows(picked, user["username"])
+            st.success(f"Đã xóa {n} review.")
             st.rerun()
 
-prod = du.product_table(df)
-rv = df[df["Số sao"].notna()]   # chỉ các dòng có
+        st.markdown("**2. Xóa toàn bộ review đang lọc**")
+        confirm = st.text_input(f"Gõ XOA để xác nhận xóa {len(rv)} review", key="confirm_all")
+        if st.button("Xóa toàn bộ kết quả lọc", disabled=confirm != "XOA"):
+            n = du.delete_rows(rv["rid"].tolist(), user["username"])
+            st.success(f"Đã xóa {n} review.")
+            st.rerun()
+
+        st.markdown("**3. Nhật ký xóa / khôi phục**")
+        log = du.load_deleted()
+        if log:
+            st.dataframe(pd.DataFrame(log), use_container_width=True, hide_index=True)
+            if st.button("Khôi phục tất cả"):
+                du.restore_all()
+                st.rerun()
+        else:
+            st.write("Chưa có review nào bị xóa.")
