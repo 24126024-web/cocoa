@@ -1,22 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-powerbi_dashboard.py
-Dựng lại dashboard Power BI (dashboard_CK_real.pbix) bằng Streamlit + Plotly.
-Gồm 8 trang: Shopee (Tổng quan / Phân tích sản phẩm / Phân tích đánh giá / Min-Max)
-             Hasaki (Tổng quan / Phân tích sản phẩm / Phân tích đánh giá / Min-Max)
+powerbi_dashboard.py  (phiên bản 2 - theo dashboard_cocoon_shopee_CK.pbix)
+Dựng lại dashboard Power BI bằng Streamlit + Plotly: 8 trang
+  Shopee : Tổng quan / Phân tích sản phẩm / Phân tích đánh giá / Min-Max
+  Hasaki : Tổng quan / Phân tích sản phẩm / Phân tích đánh giá / Min-Max
 
-Cách dùng trong app.py (tab "Power BI"):
+Dùng trong app.py (giữ nguyên cách gọi cũ):
     from powerbi_dashboard import render_powerbi_dashboard
-    with tab_powerbi:
-        render_powerbi_dashboard(
-            products_shopee=df_ps, reviews_shopee=df_rs,
-            products_hasaki=df_ph, reviews_hasaki=df_rh,
-        )
-Nếu không truyền DataFrame, hàm sẽ tự đọc file CSV/XLSX trong thư mục dataset/.
-Cần thêm `plotly` vào requirements.txt.
+    render_powerbi_dashboard(**get_powerbi_tables(du.data_signature()))
+Cần `plotly` trong requirements.txt.
 """
 from __future__ import annotations
 
+import re
+import unicodedata
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -27,27 +24,28 @@ import plotly.graph_objects as go
 import streamlit as st
 
 # ----------------------------------------------------------------------------
-# 1. CẤU HÌNH TÊN CỘT  (sửa ở đây nếu file dữ liệu của bạn đặt tên khác)
+# 1. CẤU HÌNH TÊN CỘT (sửa ở đây nếu file dữ liệu đặt tên khác)
 # ----------------------------------------------------------------------------
 ID, NAME, CAT = "Mã SP", "Tên sản phẩm", "Category"
 PRICE, ORIG, DISC = "Giá bán", "Giá gốc", "% Giảm giá"
 REV, RATING, STATUS = "Doanh thu 30 ngày", "Điểm đánh giá TB", "Trang_Thai_Mau"
 SOLD = {"Shopee": "Lượt bán", "Hasaki": "Lượt bán (30 ngày)"}
-# bảng review
-R_ID, R_STAR, R_DATE = "Mã SP", "Số sao (review)", "Ngày review"
+R_STAR, R_DATE = "Số sao (review)", "Ngày review"
 R_SENT, R_VERIFIED = "Sentiment", "Xác nhận mua hàng"
+REVM = "Doanh thu (triệu đồng)"          # cột phụ: doanh thu quy ra triệu
 
 GREEN, ORANGE = "#116B3A", "#EE4D2D"
 THEME = {
-    "Shopee": dict(accent=ORANGE, bg="#FFF7F4", soft="#FFF1EC",
+    "Shopee": dict(accent=ORANGE, bg="#FFF7F4",
                    seq=[ORANGE, GREEN, "#C83B22", "#16834A", "#D64124", "#245C3A", "#BD2426", "#8FBF9F"],
                    title="HIỆU QUẢ KINH DOANH CỦA COCOON TRÊN SHOPEE"),
-    "Hasaki": dict(accent=GREEN, bg="#EAF5EE", soft="#EAF5EE",
+    "Hasaki": dict(accent=GREEN, bg="#EAF5EE",
                    seq=[GREEN, "#16834A", "#245C3A", ORANGE, "#8FBF9F", "#C83B22", "#BD2426", "#D64124"],
                    title="HIỆU QUẢ KINH DOANH CỦA COCOON TRÊN HASAKI"),
 }
 BIN_EDGES = [0, 100e3, 200e3, 300e3, 500e3, 1e6, np.inf]
 BIN_LABELS = ["<100K", "100–200K", "200–300K", "300–500K", "500K–1M", ">1M"]
+PERIOD = {"Ngày": "D", "Tuần": "W", "Tháng": "M", "Quý": "Q", "Năm": "Y"}
 
 
 # ----------------------------------------------------------------------------
@@ -55,11 +53,40 @@ BIN_LABELS = ["<100K", "100–200K", "200–300K", "300–500K", "500K–1M", ">
 # ----------------------------------------------------------------------------
 @contextmanager
 def safe(label: str = ""):
-    """Một biểu đồ lỗi (thiếu cột...) không làm sập cả trang."""
+    """Một biểu đồ lỗi không làm sập cả trang."""
     try:
         yield
     except Exception as e:  # noqa: BLE001
         st.warning(f"⚠️ Không vẽ được «{label}»: {e}")
+
+
+def _key(s) -> str:
+    s = unicodedata.normalize("NFD", str(s))
+    s = "".join(c for c in s if unicodedata.category(c) != "Mn").replace("đ", "d").replace("Đ", "D")
+    return re.sub(r"[^a-z0-9]", "", s.lower())
+
+
+_CANON = [ID, NAME, CAT, PRICE, ORIG, DISC, REV, RATING, STATUS, "Lượt bán", "Lượt bán (30 ngày)",
+          R_STAR, R_DATE, R_SENT, R_VERIFIED]
+_ALIASES = {CAT: ["Hạng mục", "Danh mục"], R_VERIFIED: ["Đã mua hàng"], R_STAR: ["Số sao"]}
+
+
+def canon_cols(d: pd.DataFrame) -> pd.DataFrame:
+    """Đưa tên cột về đúng chuẩn (không phân biệt hoa/thường, dấu, khoảng trắng)."""
+    d = d.copy()
+    d.columns = [str(c).strip() for c in d.columns]
+    exist = {_key(c): c for c in d.columns}
+    ren = {}
+    for c in _CANON:
+        if c not in d.columns and _key(c) in exist:
+            ren[exist[_key(c)]] = c
+    for tgt, alts in _ALIASES.items():
+        if tgt not in d.columns and tgt not in ren.values():
+            for a in alts:
+                if a in d.columns:
+                    ren[a] = tgt
+                    break
+    return d.rename(columns=ren)
 
 
 def _num(s: pd.Series) -> pd.Series:
@@ -95,24 +122,32 @@ def fdec(x, n=2) -> str:
     return "—" if pd.isna(x) else f"{x:.{n}f}"
 
 
-def short(s: str, n: int = 32) -> str:
+def short(s, n: int = 34) -> str:
     s = str(s)
     return s if len(s) <= n else s[: n - 1] + "…"
 
 
-def show(fig: go.Figure, plat: str, height: int = 360) -> None:
-    th = THEME[plat]
+def uniq_labels(names: pd.Series, n: int = 34) -> list:
+    seen, out = {}, []
+    for s in names:
+        lab = short(s, n)
+        seen[lab] = seen.get(lab, 0) + 1
+        out.append(lab if seen[lab] == 1 else f"{lab} ({seen[lab]})")
+    return out
+
+
+def show(fig, plat: str, height: int = 360) -> None:
     fig.update_layout(
         height=height, margin=dict(l=10, r=10, t=50, b=10),
         paper_bgcolor="white", plot_bgcolor="white",
-        title=dict(font=dict(size=15, color=th["accent"])),
+        title=dict(font=dict(size=15, color=THEME[plat]["accent"])),
         legend=dict(orientation="h", y=-0.2),
         font=dict(family="Segoe UI, Arial, sans-serif"),
     )
     key = f"pbi|{plat}|{fig.layout.title.text}"
     try:
         st.plotly_chart(fig, width="stretch", key=key)
-    except TypeError:  # streamlit cũ
+    except TypeError:          # streamlit cũ
         st.plotly_chart(fig, use_container_width=True, key=key)
 
 
@@ -144,15 +179,16 @@ def banner(text: str, plat: str) -> None:
     )
 
 
-def top_n(d: pd.DataFrame, value: str, n: int, agg: str = "sum", by: str = NAME) -> pd.DataFrame:
-    g = d.groupby(by, as_index=False).agg({value: agg}).dropna(subset=[value])
+def top_n(d: pd.DataFrame, value: str, n: int, agg: str = "sum") -> pd.DataFrame:
+    g = d.groupby(NAME, as_index=False).agg({value: agg}).dropna(subset=[value])
     g = g.nlargest(n, value).copy()
-    g["_ten"] = g[by].map(short)
+    g["_ten"] = uniq_labels(g[NAME])
     return g
 
 
 def hbar(g, val, title, plat, text=".3s", cat="_ten", full=NAME):
-    fig = px.bar(g, x=val, y=cat, orientation="h", text_auto=text, hover_name=full if full in g else None,
+    fig = px.bar(g, x=val, y=cat, orientation="h", text_auto=text,
+                 hover_name=full if full in g else None,
                  color_discrete_sequence=[THEME[plat]["accent"]], title=title)
     fig.update_yaxes(categoryorder="total ascending", title=None)
     fig.update_xaxes(title=None)
@@ -169,55 +205,86 @@ def vbar(g, cat, val, title, plat, text=".3s", full=NAME):
     return fig
 
 
-def donut(d, cat, val, title, plat, agg="sum"):
-    g = d.groupby(cat, as_index=False).agg({val: agg}) if val else d[cat].value_counts().rename_axis(cat).reset_index(name="n")
-    val = val or "n"
-    fig = px.pie(g, names=cat, values=val, hole=0.55, title=title, color_discrete_sequence=THEME[plat]["seq"])
+def donut(d, cat, val, title, plat):
+    if val:
+        g = d.groupby(cat, as_index=False).agg({val: "sum"})
+    else:
+        g = d[cat].value_counts().rename_axis(cat).reset_index(name="n")
+        val = "n"
+    fig = px.pie(g, names=cat, values=val, hole=0.55, title=title,
+                 color_discrete_sequence=THEME[plat]["seq"])
     fig.update_traces(textinfo="percent+label")
+    return fig
+
+
+def grouped_price(g, title, plat):
+    """Cột đôi Giá gốc / Giá bán, giữ đúng thứ tự g."""
+    fig = go.Figure([go.Bar(name="Giá gốc", x=g["_ten"], y=g[ORIG], marker_color="#8FBF9F"),
+                     go.Bar(name="Giá bán", x=g["_ten"], y=g[PRICE], marker_color=THEME[plat]["accent"])])
+    fig.update_layout(barmode="group", title=title)
+    fig.update_xaxes(tickangle=-35, categoryorder="array", categoryarray=list(g["_ten"]))
     return fig
 
 
 # ----------------------------------------------------------------------------
 # 3. CHUẨN BỊ DỮ LIỆU
 # ----------------------------------------------------------------------------
+def _clean_id(d: pd.DataFrame) -> pd.DataFrame:
+    if ID in d:
+        d[ID] = d[ID].astype(str).str.strip().str.replace(r"\.0$", "", regex=True)
+    return d
+
+
 def prep_products(df: pd.DataFrame, plat: str) -> pd.DataFrame:
-    d = df.copy()
+    d = _clean_id(canon_cols(df))
     sold = SOLD[plat]
+    other = next(v for v in SOLD.values() if v != sold)
+    if sold not in d and other in d:
+        d = d.rename(columns={other: sold})
+    if NAME not in d:
+        d[NAME] = "Sản phẩm " + d[ID].astype(str) if ID in d else "Sản phẩm"
+    if CAT not in d:
+        d[CAT] = "Khác"
     for c in (PRICE, ORIG, DISC, sold, REV, RATING):
         if c in d:
             d[c] = _num(d[c])
     if DISC in d:
-        if d[DISC].abs().max() <= 1:          # 0.25 -> 25 %
+        if d[DISC].abs().max() <= 1:               # 0.25 -> 25 %
             d[DISC] = d[DISC] * 100
     elif PRICE in d and ORIG in d:
         d[DISC] = (1 - d[PRICE] / d[ORIG]) * 100
     if REV not in d and PRICE in d and sold in d:
         d[REV] = d[PRICE] * d[sold]
-    if PRICE in d:
-        d["Nhóm giá bán"] = pd.cut(d[PRICE], BIN_EDGES, labels=BIN_LABELS, right=False)
-    return d
+    for c in (PRICE, ORIG, DISC, sold, REV, RATING):
+        if c not in d:
+            d[c] = np.nan
+    d[REVM] = d[REV] / 1e6
+    d["Nhóm giá bán"] = pd.cut(d[PRICE], BIN_EDGES, labels=BIN_LABELS, right=False)
+    return d.reset_index(drop=True)
 
 
-def prep_reviews(df: pd.DataFrame | None) -> pd.DataFrame:
-    if df is None:
+def prep_reviews(df) -> pd.DataFrame:
+    if df is None or len(df) == 0:
         return pd.DataFrame()
-    d = df.copy()
+    d = _clean_id(canon_cols(df))
     if R_STAR in d:
         d[R_STAR] = _num(d[R_STAR])
     if R_DATE in d:
         d[R_DATE] = pd.to_datetime(d[R_DATE], errors="coerce", dayfirst=True)
-    return d
+    if R_SENT not in d and R_STAR in d:
+        d[R_SENT] = np.where(d[R_STAR] >= 4, "Tích cực", np.where(d[R_STAR] == 3, "Trung tính", "Tiêu cực"))
+    return d.reset_index(drop=True)
 
 
 def attach_review_stats(p: pd.DataFrame, r: pd.DataFrame) -> pd.DataFrame:
     p = p.copy()
     key = next((k for k in (ID, NAME) if k in p and k in r), None)
     if key and R_STAR in r and not r.empty:
-        g = r.groupby(key)[R_STAR].agg(n_reviews="size", avg_star="mean")
+        g = r.dropna(subset=[R_STAR]).groupby(key)[R_STAR].agg(n_reviews="size", avg_star="mean")
         p = p.merge(g, left_on=key, right_index=True, how="left")
     else:
         p["n_reviews"], p["avg_star"] = np.nan, np.nan
-    p["rating_final"] = p["avg_star"].fillna(p[RATING]) if RATING in p else p["avg_star"]
+    p["rating_final"] = p["avg_star"].fillna(p[RATING])
     return p
 
 
@@ -227,7 +294,7 @@ def is_negative(r: pd.DataFrame) -> pd.Series:
     return r[R_STAR] <= 2
 
 
-def is_verified(r: pd.DataFrame) -> pd.Series | None:
+def is_verified(r: pd.DataFrame):
     if R_VERIFIED not in r:
         return None
     return r[R_VERIFIED].astype(str).str.lower().str.strip().isin(
@@ -241,34 +308,42 @@ def page_overview(p: pd.DataFrame, plat: str) -> None:
     sold = SOLD[plat]
     banner(THEME[plat]["title"], plat)
     c = st.columns(4)
-    kpi(c[0], "Số lượng sản phẩm", fint(p[ID].count()) if ID in p else fint(len(p)), plat)
+    kpi(c[0], "Số lượng sản phẩm" if plat == "Shopee" else "Tổng số sản phẩm",
+        fint(p[ID].nunique()) if ID in p else fint(len(p)), plat)
     kpi(c[1], "Tổng số lượt bán" if plat == "Shopee" else "Tổng lượt bán (30 ngày)", fint(p[sold].sum()), plat)
-    kpi(c[2], "Điểm đánh giá TB", fdec(p[RATING].mean()) if RATING in p else "—", plat)
+    kpi(c[2], "Điểm đánh giá TB", fdec(p[RATING].mean()), plat)
     kpi(c[3], "Tổng doanh thu 30 ngày", fvnd(p[REV].sum()), plat)
 
     if plat == "Shopee":
         a, b = st.columns(2)
         with a, safe("Doanh thu theo danh mục"):
-            g = p.groupby(CAT, as_index=False)[REV].sum()
-            fig = hbar(g, REV, "Tổng doanh thu theo danh mục sản phẩm", plat, cat=CAT, full=CAT)
+            g = p.groupby(CAT, as_index=False)[REVM].sum().sort_values(REVM, ascending=False)
+            fig = px.bar(g, x=REVM, y=CAT, orientation="h", text_auto=".1f",
+                         color_discrete_sequence=[ORANGE], title="Tổng doanh thu theo danh mục sản phẩm")
+            fig.update_yaxes(categoryorder="total ascending", title=None)
+            fig.update_xaxes(title="Triệu đồng")
+            fig.update_traces(textposition="outside", cliponaxis=False)
             show(fig, plat, 340)
         with b, safe("Top 10 doanh thu"):
-            show(vbar(top_n(p, REV, 10), "_ten", REV, "Top 10 sản phẩm có doanh thu 30 ngày cao nhất", plat), plat, 340)
+            g = top_n(p, REVM, 10)
+            show(vbar(g, "_ten", REVM, "Top 10 sản phẩm có doanh thu 30 ngày cao nhất (triệu đồng)", plat, text=".1f"),
+                 plat, 340)
         a, b = st.columns(2)
         with a, safe("Tỷ trọng doanh thu"):
             show(donut(p, CAT, REV, "Tỷ trọng doanh thu theo danh mục", plat), plat, 340)
         with b, safe("Top 10 giảm giá"):
             g = top_n(p, DISC, 10, agg="mean")
-            show(hbar(g, DISC, "Top 10 sản phẩm có tỷ lệ giảm giá cao nhất", plat, text=".1f"), plat, 340)
+            show(hbar(g, DISC, "Top 10 sản phẩm có tỷ lệ giảm giá cao nhất (%)", plat, text=".1f"), plat, 340)
         with safe("Top 10 lượt bán"):
-            show(hbar(top_n(p, sold, 10), sold, "Top 10 sản phẩm có lượt bán cao nhất", plat), plat, 400)
+            show(hbar(top_n(p, sold, 10), sold, "Top 10 sản phẩm có lượt bán cao nhất", plat, text=",.0f"), plat, 400)
     else:
         a, b = st.columns(2)
         with a, safe("Doanh thu theo danh mục"):
-            g = p.groupby(CAT, as_index=False)[REV].sum().sort_values(REV, ascending=False)
-            show(vbar(g, CAT, REV, "Doanh thu 30 ngày theo danh mục", plat, full=CAT), plat, 380)
+            g = p.groupby(CAT, as_index=False)[REVM].sum().sort_values(REVM, ascending=False)
+            show(vbar(g, CAT, REVM, "Doanh thu 30 ngày theo danh mục (triệu đồng)", plat, text=".1f", full=CAT), plat, 380)
         with b, safe("Top 10 lượt bán"):
-            show(hbar(top_n(p, sold, 10), sold, "Top 10 sản phẩm có lượt bán 30 ngày cao nhất", plat), plat, 380)
+            show(hbar(top_n(p, sold, 10), sold, "Top 10 sản phẩm có lượt bán 30 ngày cao nhất", plat, text=",.0f"),
+                 plat, 380)
         a, b = st.columns([2, 3])
         with a, safe("Tỷ trọng doanh thu"):
             show(donut(p, CAT, REV, "Tỷ trọng Doanh thu 30 ngày theo danh mục", plat), plat, 400)
@@ -276,7 +351,7 @@ def page_overview(p: pd.DataFrame, plat: str) -> None:
             g = p.groupby(CAT, as_index=False).agg(gia=(PRICE, "mean"), ban=(sold, "sum"), dt=(REV, "sum"),
                                                    goc=(ORIG, "mean"), dg=(RATING, "mean"))
             fig = px.scatter(g, x="gia", y="ban", size=g["dt"].clip(lower=0).fillna(0) + 1, color=CAT,
-                             hover_data={"goc": ":.0f", "dg": ":.2f", "dt": ":,.0f"}, size_max=55,
+                             hover_data={"goc": ":,.0f", "dg": ":.2f", "dt": ":,.0f"}, size_max=55,
                              labels={"gia": "Giá bán TB", "ban": "Tổng lượt bán"},
                              color_discrete_sequence=THEME[plat]["seq"],
                              title="So sánh giá bán và lượt bán theo danh mục sản phẩm")
@@ -292,30 +367,30 @@ def page_products(p: pd.DataFrame, plat: str) -> None:
         banner("PHÂN TÍCH GIÁ VÀ LƯỢT BÁN CỦA COCOON TRÊN SHOPEE", plat)
         a, b = st.columns([3, 2])
         with a, safe("Phân bố mức giá"):
-            g = p["Nhóm giá bán"].value_counts(sort=False).rename_axis("Nhóm giá bán").reset_index(name="Số SP")
-            fig = px.bar(g, x="Nhóm giá bán", y="Số SP", text_auto=True, title="Phân bố sản phẩm theo mức giá",
-                         color_discrete_sequence=[THEME[plat]["accent"]])
+            g = (p["Nhóm giá bán"].value_counts().rename_axis("Nhóm giá bán (VNĐ)").reset_index(name="Số SP"))
+            g = g[g["Số SP"] > 0].sort_values("Số SP", ascending=False)      # Power BI sắp theo số lượng giảm dần
+            fig = px.bar(g, x="Nhóm giá bán (VNĐ)", y="Số SP", text_auto=True, title="Phân bố sản phẩm theo mức giá",
+                         color_discrete_sequence=[ORANGE])
+            fig.update_xaxes(type="category", categoryorder="array", categoryarray=[str(x) for x in g["Nhóm giá bán (VNĐ)"]])
             show(fig, plat, 330)
         with b, safe("Giá cao nhất / thấp nhất theo danh mục"):
             t = p.groupby(CAT).agg(**{"Giá bán cao nhất": (PRICE, "max"), "Giá bán thấp nhất": (PRICE, "min")}).reset_index()
             st.markdown("**Giá bán cao nhất / thấp nhất theo danh mục**")
             show_df(t)
         with safe("Scatter giá – lượt bán"):
-            fig = px.scatter(p, x=PRICE, y=sold, color=CAT, size=p[REV].clip(lower=0).fillna(0) + 1, size_max=40,
-                             hover_name=NAME, color_discrete_sequence=THEME[plat]["seq"],
+            g = p.groupby([NAME, CAT], as_index=False).agg(gia=(PRICE, "mean"), ban=(sold, "sum"), dt=(REV, "sum"))
+            fig = px.scatter(g, x="gia", y="ban", color=CAT, size=g["dt"].clip(lower=0).fillna(0) + 1, size_max=40,
+                             hover_name=NAME, labels={"gia": "Giá bán TB", "ban": "Tổng lượt bán"},
+                             color_discrete_sequence=THEME[plat]["seq"],
                              title="Mối quan hệ giữa giá bán và lượt bán của sản phẩm Shopee")
             show(fig, plat, 420)
         with safe("Giá gốc vs giá bán"):
-            top = p.nlargest(10, REV).copy()
-            top["_ten"] = top[NAME].map(short)
-            fig = go.Figure([go.Bar(name="Giá gốc", x=top["_ten"], y=top[ORIG], marker_color="#8FBF9F"),
-                             go.Bar(name="Giá bán", x=top["_ten"], y=top[PRICE], marker_color=THEME[plat]["accent"])])
-            fig.update_layout(barmode="group", title="Giá gốc và giá bán của Top 10 sản phẩm doanh thu cao nhất")
-            fig.update_xaxes(tickangle=-35)
-            show(fig, plat, 420)
+            top = p.groupby(NAME, as_index=False).agg({PRICE: "sum", ORIG: "sum", REV: "sum"}).nlargest(10, REV)
+            top = top.sort_values(PRICE, ascending=False)                    # Power BI sắp theo Giá bán giảm dần
+            top["_ten"] = uniq_labels(top[NAME])
+            show(grouped_price(top, "Giá gốc và giá bán của Top 10 sản phẩm doanh thu cao nhất", plat), plat, 420)
     else:
         banner("PHÂN TÍCH GIÁ, LƯỢT BÁN VÀ DOANH THU CỦA COCOON TRÊN HASAKI", plat)
-        # ---- slicer: Category / Trạng thái màu / Tên sản phẩm
         sl = st.columns(3)
         d = p
         for col, field, label in ((sl[0], CAT, "Danh mục"), (sl[1], STATUS, "Trạng thái màu"), (sl[2], NAME, "Sản phẩm")):
@@ -327,24 +402,23 @@ def page_products(p: pd.DataFrame, plat: str) -> None:
             st.info("Không có dữ liệu với bộ lọc đã chọn.")
             return
         with safe("Giá gốc vs giá bán"):
-            g = d.groupby(NAME, as_index=False)[[PRICE, ORIG]].mean()
-            g["_ten"] = g[NAME].map(short)
-            fig = go.Figure([go.Bar(name="Giá gốc", x=g["_ten"], y=g[ORIG], marker_color="#8FBF9F"),
-                             go.Bar(name="Giá bán", x=g["_ten"], y=g[PRICE], marker_color=THEME[plat]["accent"])])
-            fig.update_layout(barmode="group", title="So sánh giá gốc và giá bán theo sản phẩm")
-            fig.update_xaxes(tickangle=-35)
-            show(fig, plat, 400)
+            g = d.groupby(NAME, as_index=False).agg({PRICE: "mean", ORIG: "mean", REV: "sum"}).nlargest(10, REV)
+            g["_ten"] = uniq_labels(g[NAME])
+            show(grouped_price(g, "So sánh giá gốc và giá bán theo sản phẩm", plat), plat, 400)
         with safe("Scatter giá – điểm – lượt bán"):
-            fig = px.scatter(d, x=PRICE, y=RATING, size=d[sold].clip(lower=0).fillna(0) + 1, color=CAT, size_max=40,
-                             hover_name=NAME, color_discrete_sequence=THEME[plat]["seq"],
+            g = d.groupby([NAME, CAT], as_index=False).agg(gia=(PRICE, "mean"), dg=(RATING, "mean"), ban=(sold, "sum"))
+            fig = px.scatter(g, x="gia", y="dg", size=g["ban"].clip(lower=0).fillna(0) + 1, color=CAT, size_max=40,
+                             hover_name=NAME, labels={"gia": "Giá bán TB", "dg": "Điểm đánh giá TB"},
+                             color_discrete_sequence=THEME[plat]["seq"],
                              title="Mối quan hệ giữa giá bán, điểm đánh giá và lượt bán sản phẩm Cocoon trên Hasaki")
             show(fig, plat, 420)
         a, b = st.columns(2)
         with a, safe("Top 10 doanh thu"):
-            show(hbar(top_n(d, REV, 10), REV, "Top 10 sản phẩm theo doanh thu 30 ngày", plat), plat, 380)
+            show(hbar(top_n(d, REVM, 10), REVM, "Top 10 sản phẩm theo doanh thu 30 ngày (triệu đồng)", plat, text=".1f"),
+                 plat, 380)
         with b, safe("Lượt bán theo danh mục"):
             g = d.groupby(CAT, as_index=False)[sold].sum()
-            show(vbar(g, CAT, sold, "Tổng lượt bán 30 ngày theo danh mục", plat, full=CAT), plat, 380)
+            show(vbar(g, CAT, sold, "Tổng lượt bán 30 ngày theo danh mục", plat, text=",.0f", full=CAT), plat, 380)
 
 
 # ----------------------------------------------------------------------------
@@ -355,10 +429,10 @@ def page_reviews(p: pd.DataFrame, r: pd.DataFrame, plat: str) -> None:
     if r.empty or R_STAR not in r:
         st.info("Chưa có dữ liệu đánh giá (bảng Reviews) cho sàn này.")
         return
-    n_rev = len(r)
+    r = r.dropna(subset=[R_STAR])
     c = st.columns(4)
     kpi(c[0], "Điểm đánh giá trung bình", fdec(r[R_STAR].mean()), plat)
-    kpi(c[1], "Tổng số lượt đánh giá", fint(n_rev), plat)
+    kpi(c[1], "Tổng số lượt đánh giá", fint(len(r)), plat)
     kpi(c[2], "Tỷ lệ đánh giá 5 sao", fpct((r[R_STAR] == 5).mean() * 100), plat)
     if plat == "Shopee":
         kpi(c[3], "Tỷ lệ đánh giá tiêu cực", fpct(is_negative(r).mean() * 100), plat)
@@ -370,10 +444,7 @@ def page_reviews(p: pd.DataFrame, r: pd.DataFrame, plat: str) -> None:
     i = 0
     if plat == "Shopee":
         with cols[0], safe("Cơ cấu cảm xúc"):
-            if R_SENT in r:
-                show(donut(r, R_SENT, None, "Cơ cấu cảm xúc đánh giá", plat), plat, 330)
-            else:
-                st.info(f"Không có cột «{R_SENT}».")
+            show(donut(r, R_SENT, None, "Cơ cấu cảm xúc đánh giá", plat), plat, 330)
         i = 1
     with cols[i], safe("Phân bố số sao"):
         g = r[R_STAR].value_counts().sort_index().rename_axis("Số sao").reset_index(name="Số đánh giá")
@@ -383,11 +454,12 @@ def page_reviews(p: pd.DataFrame, r: pd.DataFrame, plat: str) -> None:
         show(fig, plat, 330)
     with cols[i + 1], safe("Xu hướng đánh giá"):
         if R_DATE in r and r[R_DATE].notna().any():
-            gran = st.radio("Mức thời gian", ["Ngày", "Tháng", "Quý", "Năm"], index=1, horizontal=True,
-                            key=f"gran_{plat}")
-            rule = {"Ngày": "D", "Tháng": "MS", "Quý": "QS", "Năm": "YS"}[gran]
-            g = r.dropna(subset=[R_DATE]).set_index(R_DATE).resample(rule).size().rename("Số đánh giá").reset_index()
-            fig = px.line(g, x=R_DATE, y="Số đánh giá", markers=True, title="Xu hướng đánh giá của khách hàng theo thời gian",
+            gran = st.radio("Mức thời gian", list(PERIOD), index=0, horizontal=True, key=f"gran_{plat}")
+            dd = r.dropna(subset=[R_DATE])
+            per = dd[R_DATE].dt.to_period(PERIOD[gran]).dt.to_timestamp()
+            g = dd.groupby(per).size().rename("Số đánh giá").rename_axis("Thời gian").reset_index()
+            fig = px.line(g, x="Thời gian", y="Số đánh giá", markers=True,
+                          title="Xu hướng đánh giá của khách hàng theo thời gian",
                           color_discrete_sequence=[THEME[plat]["accent"]])
             show(fig, plat, 330)
 
@@ -395,12 +467,13 @@ def page_reviews(p: pd.DataFrame, r: pd.DataFrame, plat: str) -> None:
     n_top = 8 if plat == "Shopee" else 10
     with safe("Top sản phẩm nhiều đánh giá"):
         g = top_n(p, "n_reviews", n_top)
-        show(vbar(g, "_ten", "n_reviews", f"Top {n_top} sản phẩm có nhiều lượt đánh giá cao nhất", plat), plat, 400)
+        show(vbar(g, "_ten", "n_reviews", f"Top {n_top} sản phẩm có nhiều lượt đánh giá cao nhất", plat, text=",.0f"),
+             plat, 400)
     with safe("Điểm đánh giá theo sản phẩm"):
-        g = p.groupby(NAME, as_index=False)["rating_final"].mean().dropna()
-        g["_ten"] = g[NAME].map(short)
-        show(hbar(g, "rating_final", "Điểm đánh giá trung bình theo sản phẩm", plat, text=".2f"), plat,
-             max(380, 24 * len(g) + 80))
+        g = p.groupby(NAME, as_index=False).agg(n=("n_reviews", "sum"), diem=("rating_final", "mean"))
+        g = g.dropna(subset=["diem"]).nlargest(10, "n").sort_values("diem", ascending=False)   # Top 10 theo số đánh giá
+        g["_ten"] = uniq_labels(g[NAME])
+        show(hbar(g, "diem", "Điểm đánh giá trung bình theo sản phẩm", plat, text=".2f"), plat, 420)
 
 
 # ----------------------------------------------------------------------------
@@ -411,23 +484,22 @@ def page_minmax(p: pd.DataFrame, r: pd.DataFrame, plat: str) -> None:
     sold = SOLD[plat]
     p = attach_review_stats(p, r)
 
-    def row(label, col, fmt, d, namecol=NAME):
+    def row(label, col, fmt, d):
         if col not in d or d[col].dropna().empty:
             return None
         hi, lo = d[col].idxmax(), d[col].idxmin()
         return {"Chỉ tiêu": label,
-                "Max": f"{fmt(d.at[hi, col])} · {short(d.at[hi, namecol], 40)}",
-                "Min": f"{fmt(d.at[lo, col])} · {short(d.at[lo, namecol], 40)}"}
+                "Max": f"{fmt(d.at[hi, col])} · {short(d.at[hi, NAME], 40)}",
+                "Min": f"{fmt(d.at[lo, col])} · {short(d.at[lo, NAME], 40)}"}
 
     spec = [("Giá bán", PRICE, fint), ("Giá gốc", ORIG, fint), ("% Giảm giá", DISC, fpct),
             ("Lượt bán", sold, fint), ("Doanh thu 30 ngày", REV, fvnd), ("Điểm đánh giá TB", RATING, fdec),
             ("Số lượt đánh giá", "n_reviews", fint)]
-    rows = [x for x in (row(a, b, c, p) for a, b, c in spec) if x]
     a, b = st.columns(2)
-    with a:
+    with a, safe("Chỉ tiêu sản phẩm"):
         st.markdown("**Chỉ tiêu sản phẩm**")
-        show_df(pd.DataFrame(rows))
-    with b:
+        show_df(pd.DataFrame([x for x in (row(*s, p) for s in spec) if x]))
+    with b, safe("Chỉ tiêu đánh giá"):
         st.markdown("**Chỉ tiêu đánh giá**")
         rr = []
         if not r.empty and R_STAR in r:
@@ -442,15 +514,12 @@ def page_minmax(p: pd.DataFrame, r: pd.DataFrame, plat: str) -> None:
 
 
 # ----------------------------------------------------------------------------
-# 8. ĐỌC DỮ LIỆU TỰ ĐỘNG TỪ THƯ MỤC dataset/ (tuỳ chọn)
+# 8. ĐỌC DỮ LIỆU TỰ ĐỘNG (chỉ dùng khi không truyền DataFrame)
 # ----------------------------------------------------------------------------
 def _read_any(path: Path) -> pd.DataFrame:
     if path.suffix.lower() in (".xlsx", ".xls"):
         return pd.read_excel(path)
-    try:
-        return pd.read_csv(path, encoding="utf-8-sig")
-    except UnicodeDecodeError:
-        return pd.read_csv(path, encoding="utf-8")
+    return pd.read_csv(path, encoding="utf-8-sig")
 
 
 @st.cache_data(show_spinner=False)
@@ -459,9 +528,9 @@ def load_datasets(folder: str = "dataset") -> dict:
     files = [f for ext in ("*.csv", "*.xlsx") for f in base.rglob(ext)]
     out = {}
     for plat in ("shopee", "hasaki"):
-        for kind, keys in (("products", ("product", "san_pham", "sanpham", "sp")), ("reviews", ("review", "danh_gia", "comment"))):
-            hit = next((f for f in files if plat in f.stem.lower() and any(k in f.stem.lower() for k in keys)
-                        and (kind == "reviews") == any(k in f.stem.lower() for k in ("review", "danh_gia", "comment"))), None)
+        for kind in ("products", "reviews"):
+            hit = next((f for f in files if plat in f.stem.lower()
+                        and (("review" in f.stem.lower()) == (kind == "reviews"))), None)
             out[f"{kind}_{plat}"] = _read_any(hit) if hit else None
     return out
 
@@ -498,6 +567,6 @@ def render_powerbi_dashboard(products_shopee=None, reviews_shopee=None,
                 page_minmax(p, r, plat)
 
 
-if __name__ == "__main__":      # chạy thử riêng:  streamlit run powerbi_dashboard.py
+if __name__ == "__main__":      # chạy thử riêng: streamlit run powerbi_dashboard.py
     st.set_page_config(page_title="Cocoon Dashboard", layout="wide")
     render_powerbi_dashboard()
