@@ -220,5 +220,20 @@ if df.empty:
     st.warning("Không có dữ liệu phù hợp với bộ lọc hiện tại.")
     st.stop()
 
+if admin:
+    with st.sidebar.expander("🔍 Kiểm tra nguồn dữ liệu"):
+        for label, f in (("Hasaki - SP", du.HASAKI_PROD_FILE), ("Hasaki - Review", du.HASAKI_REV_FILE),
+                         ("Shopee - SP", du.SHOPEE_PROD_FILE), ("Shopee - Review", du.SHOPEE_REV_FILE)):
+            st.caption(f"{label}: {'✅' if f.exists() else '❌'} {f}")
+        _hp = du._clean_raw(du._read_table(du.HASAKI_PROD_FILE))
+        _hr = du._clean_raw(du._read_table(du.HASAKI_REV_FILE))
+        st.caption(f"File SP Hasaki: {len(_hp)} dòng, {_hp['Mã SP'].nunique() if len(_hp) else 0} mã SP")
+        st.caption(f"File Review Hasaki: {len(_hr)} dòng, {_hr['Mã SP'].nunique() if len(_hr) else 0} mã SP")
+        _hb = base[base["Nguồn"] == "Hasaki"]
+        st.caption(f"Sau khi nạp: {_hb['Mã SP'].nunique()} sản phẩm Hasaki")
+        if st.button("Xóa cache dữ liệu"):
+            st.cache_data.clear()
+            st.rerun()
+
 prod = du.product_table(df)
 rv = df[df["Số sao"].notna()]   # chỉ các dòng có
