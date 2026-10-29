@@ -272,6 +272,64 @@ tabs = st.tabs(tab_names)
 
 
 with tabs[0], guard("Tổng quan"):
+    kw = keyword.strip()
+    if kw:
+        st.subheader(f"🔎 Kết quả tìm kiếm: “{kw}”")
+        if rv.empty:
+            st.info("Không có review nào chứa từ khóa này trong bộ lọc hiện tại.")
+        else:
+            sp = (rv.groupby(["Nguồn", "Tên sản phẩm"], as_index=False)
+                    .agg(**{"Số review": ("Số sao", "size"),
+                            "Khen (4-5★)": ("Số sao", lambda s: int((s >= 4).sum())),
+                            "Trung tính (3★)": ("Số sao", lambda s: int((s == 3).sum())),
+                            "Chê (1-2★)": ("Số sao", lambda s: int((s <= 2).sum())),
+                            "Sao TB": ("Số sao", "mean")}))
+            sp["% Khen"] = (sp["Khen (4-5★)"] / sp["Số review"] * 100).round(1)
+            sp["% Chê"] = (sp["Chê (1-2★)"] / sp["Số review"] * 100).round(1)
+            sp["Sao TB"] = sp["Sao TB"].round(2)
+            sp["Nhận xét"] = sp.apply(
+                lambda r: "⚠️ Bị chê nhiều" if r["% Chê"] >= 20
+                else ("👍 Được khen nhiều" if r["% Khen"] >= 90 else "Bình thường"), axis=1)
+            sp = sp.sort_values(["Số review", "% Chê"], ascending=[False, False])
+
+            n_khen = int((rv["Số sao"] >= 4).sum())
+            n_che = int((rv["Số sao"] <= 2).sum())
+            m1, m2, m3, m4, m5 = st.columns(5)
+            m1.metric("Review chứa từ khóa", fmt_int(len(rv)))
+            m2.metric("Số sản phẩm được nhắc", fmt_int(len(sp)))
+            m3.metric("Tỉ lệ khen (4-5★)", f"{n_khen / len(rv):.1%}")
+            m4.metric("Tỉ lệ chê (1-2★)", f"{n_che / len(rv):.1%}")
+            m5.metric("Sản phẩm bị chê nhiều", fmt_int((sp["Nhận xét"] == "⚠️ Bị chê nhiều").sum()))
+
+            # --- 1 biểu đồ: Top 10 sản phẩm có review chứa từ khóa, tách khen / trung tính / chê
+            top_sp = sp.head(10).copy()
+            top_sp["Sản phẩm"] = top_sp.apply(
+                lambda r: (r["Tên sản phẩm"][:38] + "…" if len(r["Tên sản phẩm"]) > 38 else r["Tên sản phẩm"])
+                + f" ({r['Nguồn']})", axis=1)
+            loai = ["Khen (4-5★)", "Trung tính (3★)", "Chê (1-2★)"]
+            long = top_sp[["Sản phẩm"] + loai].melt(id_vars="Sản phẩm", var_name="Loại", value_name="Số lượng")
+            fig = px.bar(
+                long, x="Số lượng", y="Sản phẩm", color="Loại", orientation="h", barmode="stack",
+                color_discrete_map={"Khen (4-5★)": "#2d6a4f", "Trung tính (3★)": "#b0b0b0", "Chê (1-2★)": "#d62828"},
+            )
+            fig = style_plotly_figure(fig, f"Top 10 sản phẩm có review chứa “{kw}”: khen và chê")
+            fig.update_layout(yaxis={"categoryorder": "total ascending"})
+            st.plotly_chart(fig, use_container_width=True)
+
+            st.markdown("**Chi tiết theo sản phẩm**")
+            st.dataframe(
+                sp[["Nguồn", "Tên sản phẩm", "Số review", "% Khen", "% Chê", "Sao TB", "Nhận xét"]],
+                use_container_width=True, hide_index=True,
+            )
+            st.caption("Nhận xét: «Bị chê nhiều» khi ≥ 20% review chứa từ khóa là 1-2★; «Được khen nhiều» khi ≥ 90% là 4-5★.")
+
+            with st.expander("Xem nội dung các review tìm được (tối đa 200 dòng mới nhất)"):
+                st.dataframe(
+                    rv[["Nguồn", "Tên sản phẩm", "Số sao", "Nội dung review", "Ngày review"]]
+                    .sort_values("Ngày review", ascending=False).head(200),
+                    use_container_width=True, hide_index=True,
+                )
+        st.divider()
     k1, k2, k3, k4, k5 = st.columns(5)
     k1.metric("Số sản phẩm", fmt_int(len(prod)))
     k2.metric("Số review", fmt_int(len(rv)))
