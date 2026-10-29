@@ -1,0 +1,4 @@
+﻿Mô hình,Accuracy,Precision,Recall,F1-score,ROC-AUC,PR-AUC,Tham số tốt nhất
+Logistic Regression,0.9107,0.359,0.8077,0.497,0.949,0.5585,{'C': 1}
+Decision Tree,0.8992,0.3,0.6346,0.4074,0.7796,0.2445,"{'max_depth': 20, 'min_samples_leaf': 2}"
+Random Forest,0.9359,0.4384,0.6154,0.512,0.9396,0.4743,"{'max_depth': 20, 'min_samples_leaf': 3}"

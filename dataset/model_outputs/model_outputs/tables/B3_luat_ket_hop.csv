@@ -1,0 +1,149 @@
+﻿Antecedent,Consequent,Support,Confidence,Lift
+Quà/Dịch vụ shop + Đóng gói,Giao hàng + Đánh giá 5★,0.0616,0.5948,3.015
+Quà/Dịch vụ shop + Đánh giá 5★ + Đóng gói,Giao hàng,0.0616,0.6699,2.9272
+Quà/Dịch vụ shop + Đóng gói,Giao hàng,0.0686,0.6624,2.8942
+Da mặt/Mụn + Dưỡng ẩm + Đánh giá 5★,Làm sạch,0.0365,0.8277,2.8892
+Da mặt/Mụn + Dưỡng ẩm,Làm sạch,0.0415,0.823,2.8728
+Da mặt/Mụn + Dưỡng ẩm,Làm sạch + Đánh giá 5★,0.0365,0.7227,2.7992
+Giao hàng + Mùi hương,Đánh giá 5★ + Đóng gói,0.038,0.6764,2.688
+Giao hàng + Làm sạch,Đánh giá 5★ + Đóng gói,0.0307,0.6624,2.6323
+Làm sạch + Đóng gói,Giao hàng + Đánh giá 5★,0.0307,0.5163,2.6169
+Giao hàng + Quà/Dịch vụ shop + Đánh giá 5★,Đóng gói,0.0616,0.7353,2.5668
+Giao hàng + Mùi hương + Đánh giá 5★,Đóng gói,0.038,0.7349,2.5652
+Giao hàng + Mùi hương,Đóng gói,0.0409,0.7294,2.5462
+Giao hàng + Quà/Dịch vụ shop,Đánh giá 5★ + Đóng gói,0.0616,0.6379,2.535
+Giao hàng + Làm sạch,Đóng gói,0.0335,0.7235,2.5254
+Giao hàng + Làm sạch + Đánh giá 5★,Đóng gói,0.0307,0.7228,2.5231
+Giao hàng + Quà/Dịch vụ shop,Đóng gói,0.0686,0.7103,2.4795
+Giao hàng + Đánh giá 5★,Đóng gói,0.1394,0.7064,2.4658
+Đóng gói,Giao hàng + Đánh giá 5★,0.1394,0.4865,2.4658
+Làm sạch + Đóng gói,Giao hàng,0.0335,0.5639,2.464
+Làm sạch + Đánh giá 5★ + Đóng gói,Giao hàng,0.0307,0.5628,2.4594
+Dịu nhẹ/Lành tính + Làm sạch,Da mặt/Mụn,0.0491,0.5246,2.4435
+Giao hàng,Đánh giá 5★ + Đóng gói,0.1394,0.609,2.4201
+Đánh giá 5★ + Đóng gói,Giao hàng,0.1394,0.5538,2.4201
+Dịu nhẹ/Lành tính + Làm sạch + Đánh giá 5★,Da mặt/Mụn,0.0439,0.5185,2.4147
+Dịu nhẹ/Lành tính + Làm sạch,Da mặt/Mụn + Đánh giá 5★,0.0439,0.469,2.4136
+Giá tốt + Đóng gói,Giao hàng + Đánh giá 5★,0.0325,0.476,2.4126
+Giao hàng,Đóng gói,0.1577,0.689,2.4051
+Đóng gói,Giao hàng,0.1577,0.5504,2.4051
+Dịu nhẹ/Lành tính + Kết cấu mịn mượt,Dưỡng ẩm + Đánh giá 5★,0.0345,0.5249,2.3915
+Da mặt/Mụn + Kết cấu mịn mượt,Làm sạch,0.0342,0.6825,2.3823
+Da mặt/Mụn + Kết cấu mịn mượt,Làm sạch + Đánh giá 5★,0.0308,0.6142,2.379
+Giao hàng + Giá tốt,Đánh giá 5★ + Đóng gói,0.0325,0.5956,2.367
+Giao hàng + Giá tốt + Đánh giá 5★,Đóng gói,0.0325,0.6749,2.3559
+Dịu nhẹ/Lành tính + Kết cấu mịn mượt,Dưỡng ẩm,0.0393,0.5973,2.35
+Da mặt/Mụn + Kết cấu mịn mượt + Đánh giá 5★,Làm sạch,0.0308,0.6721,2.346
+Giá tốt + Đánh giá 5★ + Đóng gói,Giao hàng,0.0325,0.5291,2.312
+Mùi hương + Đóng gói,Giao hàng + Đánh giá 5★,0.038,0.4545,2.3039
+Giá tốt + Đóng gói,Giao hàng,0.0357,0.524,2.2897
+Giao hàng + Giá tốt,Đóng gói,0.0357,0.6557,2.2889
+Dịu nhẹ/Lành tính + Kết cấu mịn mượt + Đánh giá 5★,Dưỡng ẩm,0.0345,0.5786,2.2763
+Dưỡng ẩm + Làm sạch,Da mặt/Mụn,0.0415,0.4886,2.2757
+Dưỡng ẩm + Làm sạch + Đánh giá 5★,Da mặt/Mụn,0.0365,0.4871,2.2685
+Dưỡng ẩm + Làm sạch,Da mặt/Mụn + Đánh giá 5★,0.0365,0.4291,2.2082
+Dưỡng ẩm + Làm sạch,Kết cấu mịn mượt,0.0459,0.5394,2.1942
+Da mặt/Mụn + Dịu nhẹ/Lành tính,Làm sạch,0.0491,0.6286,2.1941
+Da mặt/Mụn + Dịu nhẹ/Lành tính,Làm sạch + Đánh giá 5★,0.0439,0.5619,2.1763
+Da mặt/Mụn + Dịu nhẹ/Lành tính + Đánh giá 5★,Làm sạch,0.0439,0.6197,2.1633
+Mùi hương + Đánh giá 5★ + Đóng gói,Giao hàng,0.038,0.4942,2.1594
+Dưỡng ẩm + Làm sạch + Đánh giá 5★,Kết cấu mịn mượt,0.0398,0.5308,2.1593
+Mùi hương + Đóng gói,Giao hàng,0.0409,0.4902,2.1419
+Dưỡng ẩm + Làm sạch,Kết cấu mịn mượt + Đánh giá 5★,0.0398,0.4676,2.1048
+Giao hàng + Đánh giá 5★ + Đóng gói,Quà/Dịch vụ shop,0.0616,0.4423,2.0291
+Giao hàng + Đóng gói,Quà/Dịch vụ shop,0.0686,0.4353,1.997
+Quà/Dịch vụ shop + Đánh giá 5★,Giao hàng,0.0838,0.4472,1.954
+Giao hàng + Đánh giá 5★,Quà/Dịch vụ shop,0.0838,0.4249,1.9492
+Quà/Dịch vụ shop,Giao hàng,0.0966,0.4433,1.937
+Giao hàng,Quà/Dịch vụ shop,0.0966,0.4223,1.937
+Dịu nhẹ/Lành tính + Kết cấu mịn mượt,Làm sạch,0.0347,0.5271,1.8401
+Da mặt/Mụn,Làm sạch,0.1126,0.5243,1.83
+Da mặt/Mụn,Làm sạch + Đánh giá 5★,0.1014,0.4723,1.8291
+Dịu nhẹ/Lành tính + Kết cấu mịn mượt,Làm sạch + Đánh giá 5★,0.031,0.4706,1.8226
+Da mặt/Mụn + Đánh giá 5★,Làm sạch,0.1014,0.5218,1.8216
+Dịu nhẹ/Lành tính + Kết cấu mịn mượt + Đánh giá 5★,Làm sạch,0.031,0.5187,1.8106
+Dưỡng ẩm + Làm sạch,Dịu nhẹ/Lành tính,0.0384,0.4518,1.8074
+Dưỡng ẩm + Làm sạch + Đánh giá 5★,Dịu nhẹ/Lành tính,0.0337,0.4493,1.7972
+Dưỡng ẩm + Kết cấu mịn mượt,Làm sạch,0.0459,0.5091,1.7771
+Da mặt/Mụn + Làm sạch,Dịu nhẹ/Lành tính,0.0491,0.4365,1.746
+Dưỡng ẩm + Kết cấu mịn mượt,Dịu nhẹ/Lành tính,0.0393,0.4364,1.7455
+Dưỡng ẩm + Kết cấu mịn mượt + Đánh giá 5★,Làm sạch,0.0398,0.4981,1.7388
+Da mặt/Mụn + Làm sạch + Đánh giá 5★,Dịu nhẹ/Lành tính,0.0439,0.4332,1.7327
+Dưỡng ẩm + Kết cấu mịn mượt + Đánh giá 5★,Dịu nhẹ/Lành tính,0.0345,0.4328,1.7313
+Dưỡng ẩm + Dịu nhẹ/Lành tính,Kết cấu mịn mượt,0.0393,0.4244,1.7265
+Quà/Dịch vụ shop + Đánh giá 5★,Đóng gói,0.092,0.4909,1.7134
+Dưỡng ẩm + Kết cấu mịn mượt,Làm sạch + Đánh giá 5★,0.0398,0.4413,1.7093
+Dưỡng ẩm + Dịu nhẹ/Lành tính + Đánh giá 5★,Kết cấu mịn mượt,0.0345,0.4188,1.7035
+Quà/Dịch vụ shop,Đánh giá 5★ + Đóng gói,0.092,0.4221,1.6775
+Quà/Dịch vụ shop,Đóng gói,0.1036,0.4754,1.6595
+Kết cấu mịn mượt,Làm sạch + Đánh giá 5★,0.103,0.4191,1.6234
+Kết cấu mịn mượt,Làm sạch,0.1141,0.464,1.6195
+Kết cấu mịn mượt + Đánh giá 5★,Làm sạch,0.103,0.4638,1.619
+Dịu nhẹ/Lành tính + Làm sạch,Dưỡng ẩm,0.0384,0.4102,1.6138
+Kết cấu mịn mượt + Làm sạch,Dưỡng ẩm,0.0459,0.4021,1.582
+Tóc + Đánh giá 5★,Dưỡng ẩm,0.0548,0.4009,1.5772
+Kết cấu mịn mượt + Mùi hương,Làm sạch,0.0332,0.424,1.4799
+Dưỡng ẩm + Dịu nhẹ/Lành tính,Làm sạch,0.0384,0.4148,1.4479
+Dưỡng ẩm + Dịu nhẹ/Lành tính + Đánh giá 5★,Làm sạch,0.0337,0.4079,1.424
+Giao hàng + Kết cấu mịn mượt,Đánh giá 5★,0.0319,0.9304,1.0611
+Dịu nhẹ/Lành tính + Quay lại mua,Đánh giá 5★,0.0375,0.9299,1.0605
+Dịu nhẹ/Lành tính + Quà/Dịch vụ shop,Đánh giá 5★,0.0399,0.9273,1.0576
+Giao hàng + Mùi hương + Đóng gói,Đánh giá 5★,0.038,0.9273,1.0575
+Quay lại mua + Đóng gói,Đánh giá 5★,0.0447,0.9259,1.056
+Da mặt/Mụn + Mùi hương,Đánh giá 5★,0.0356,0.9228,1.0524
+Dịu nhẹ/Lành tính + Đóng gói,Đánh giá 5★,0.0472,0.9215,1.0509
+Giao hàng + Mùi hương,Đánh giá 5★,0.0517,0.9204,1.0497
+Giá tốt + Kết cấu mịn mượt,Đánh giá 5★,0.036,0.9202,1.0494
+Mùi hương + Đóng gói,Đánh giá 5★,0.0768,0.9198,1.049
+Làm sạch + Đóng gói,Đánh giá 5★,0.0545,0.9173,1.0461
+Giao hàng + Làm sạch,Đánh giá 5★,0.0424,0.9164,1.0451
+Giao hàng + Làm sạch + Đóng gói,Đánh giá 5★,0.0307,0.9156,1.0441
+Quay lại mua + Quà/Dịch vụ shop,Đánh giá 5★,0.0465,0.915,1.0434
+Da mặt/Mụn + Kết cấu mịn mượt,Đánh giá 5★,0.0459,0.9139,1.0423
+Giá tốt + Mùi hương,Đánh giá 5★,0.0506,0.9115,1.0395
+Dịu nhẹ/Lành tính,Đánh giá 5★,0.2277,0.9107,1.0385
+Dịu nhẹ/Lành tính + Mùi hương,Đánh giá 5★,0.0797,0.9099,1.0376
+Giá tốt + Làm sạch,Đánh giá 5★,0.0479,0.9096,1.0373
+Giao hàng + Giá tốt + Đóng gói,Đánh giá 5★,0.0325,0.9083,1.0359
+Dịu nhẹ/Lành tính + Kết cấu mịn mượt,Đánh giá 5★,0.0597,0.9072,1.0346
+Chính hãng,Đánh giá 5★,0.0596,0.907,1.0344
+Da mặt/Mụn + Dịu nhẹ/Lành tính,Đánh giá 5★,0.0709,0.9067,1.034
+Mùi hương + Quà/Dịch vụ shop,Đánh giá 5★,0.0457,0.9056,1.0328
+Giao hàng + Quay lại mua,Đánh giá 5★,0.0356,0.9053,1.0324
+Da mặt/Mụn,Đánh giá 5★,0.1943,0.905,1.0321
+Da mặt/Mụn + Quà/Dịch vụ shop,Đánh giá 5★,0.0339,0.9048,1.0318
+Dịu nhẹ/Lành tính + Làm sạch,Đánh giá 5★,0.0847,0.9046,1.0316
+Kết cấu mịn mượt + Đóng gói,Đánh giá 5★,0.0409,0.9046,1.0316
+Dịu nhẹ/Lành tính + Giá tốt,Đánh giá 5★,0.0392,0.9038,1.0307
+Kết cấu mịn mượt,Đánh giá 5★,0.2222,0.9037,1.0306
+Kết cấu mịn mượt + Làm sạch,Đánh giá 5★,0.103,0.9034,1.0303
+Làm sạch + Mùi hương,Đánh giá 5★,0.0804,0.903,1.0298
+Kết cấu mịn mượt + Phàn nàn,Đánh giá 5★,0.0314,0.9017,1.0283
+Làm sạch,Đánh giá 5★,0.2582,0.9012,1.0278
+Da mặt/Mụn + Làm sạch,Đánh giá 5★,0.1014,0.9008,1.0273
+Da mặt/Mụn + Kết cấu mịn mượt + Làm sạch,Đánh giá 5★,0.0308,0.9,1.0264
+Làm sạch + Quà/Dịch vụ shop,Đánh giá 5★,0.0442,0.9,1.0264
+Giá tốt + Đóng gói,Đánh giá 5★,0.0613,0.8996,1.0259
+Giao hàng + Quà/Dịch vụ shop + Đóng gói,Đánh giá 5★,0.0616,0.898,1.0242
+Mùi hương + Quay lại mua,Đánh giá 5★,0.038,0.8947,1.0204
+Quay lại mua,Đánh giá 5★,0.147,0.894,1.0196
+Da mặt/Mụn + Dịu nhẹ/Lành tính + Làm sạch,Đánh giá 5★,0.0439,0.8939,1.0195
+Dưỡng ẩm + Tóc,Đánh giá 5★,0.0548,0.8932,1.0186
+Dịu nhẹ/Lành tính + Kết cấu mịn mượt + Làm sạch,Đánh giá 5★,0.031,0.8927,1.0181
+Làm sạch + Quay lại mua,Đánh giá 5★,0.0345,0.8923,1.0176
+Dưỡng ẩm + Dịu nhẹ/Lành tính,Đánh giá 5★,0.0825,0.8907,1.0158
+Giá tốt + Quà/Dịch vụ shop,Đánh giá 5★,0.0517,0.8897,1.0147
+Mùi hương,Đánh giá 5★,0.2644,0.8884,1.0132
+Quà/Dịch vụ shop + Đóng gói,Đánh giá 5★,0.092,0.8879,1.0126
+Giá tốt,Đánh giá 5★,0.1861,0.8872,1.0117
+Dưỡng ẩm + Kết cấu mịn mượt,Đánh giá 5★,0.0798,0.886,1.0104
+Kết cấu mịn mượt + Mùi hương,Đánh giá 5★,0.0694,0.8859,1.0103
+Giao hàng + Đóng gói,Đánh giá 5★,0.1394,0.8839,1.008
+Giao hàng + Giá tốt,Đánh giá 5★,0.0481,0.8825,1.0064
+Dưỡng ẩm + Làm sạch,Đánh giá 5★,0.0749,0.8809,1.0046
+Dưỡng ẩm + Dịu nhẹ/Lành tính + Kết cấu mịn mượt,Đánh giá 5★,0.0345,0.8788,1.0022
+Đóng gói,Đánh giá 5★,0.2516,0.8784,1.0017
+Da mặt/Mụn + Dưỡng ẩm + Làm sạch,Đánh giá 5★,0.0365,0.8781,1.0015
+Quay lại mua + Tóc,Đánh giá 5★,0.032,0.8776,1.0008
+Dưỡng ẩm + Quay lại mua,Đánh giá 5★,0.0395,0.8775,1.0007
+Hiệu quả,Đánh giá 5★,0.0944,0.8769,1.0
