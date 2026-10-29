@@ -1,0 +1,4 @@
+﻿Mô hình,MAE,MSE,RMSE,R²,Tham số tốt nhất
+Linear Regression,1.0372,2.016,1.4199,0.0191,{}
+Decision Tree,0.827,1.5343,1.2387,0.2535,"{'max_depth': 2, 'min_samples_leaf': 2}"
+Random Forest,0.8902,1.4809,1.2169,0.2794,"{'max_depth': 3, 'min_samples_leaf': 1}"

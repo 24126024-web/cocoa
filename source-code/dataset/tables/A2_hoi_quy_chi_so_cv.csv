@@ -1,0 +1,4 @@
+﻿Mô hình,R² (CV TB),R² (CV độ lệch),RMSE (CV TB)
+Linear Regression,0.3108,0.1914,1.1891
+Decision Tree,0.3034,0.2973,1.1963
+Random Forest,0.3291,0.2968,1.1711

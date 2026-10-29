@@ -1,0 +1,115 @@
+﻿Sàn,Mã SP,Tên sản phẩm,Category,Recency,Frequency,Monetary,R_score,F_score,M_score,Phân khúc RFM,Cụm K-means,Tên cụm
+Hasaki,84641,Tinh Chất Dưỡng Tóc Cocoon Hỗ Trợ Phục Hồi & Bảo Vệ 70ml,Chăm sóc tóc,706,0,1924000,3,1,1,Potential (tiềm năng),2,Cụm 3 – Trung bình
+Hasaki,84643,Tẩy Da Chết Toàn Thân Cocoon Cà Phê Đắk Lắk 200ml,Tẩy tế bào chết,13,8,12530000,5,5,4,Champions (ngôi sao),1,Cụm 2 – Nổi bật
+Hasaki,86705,Mặt Nạ Cocoon Bí Đao Giảm Dầu & Mụn 30ml,Mặt nạ,84,2,7776000,4,4,3,Loyal (ổn định),1,Cụm 2 – Nổi bật
+Hasaki,86707,Son Dưỡng Cocoon Dầu Dừa Bến Tre 5g,Chăm sóc môi,167,4,12765000,4,5,4,Champions (ngôi sao),1,Cụm 2 – Nổi bật
+Hasaki,88369,Dầu Tẩy Trang Cocoon Chiết Xuất Hoa Hồng 140ml,Tẩy trang,1,1,12416000,5,4,4,Champions (ngôi sao),1,Cụm 2 – Nổi bật
+Hasaki,90741,Kem Dưỡng Cocoon Dạng Thạch Hoa Hồng Dưỡng Ẩm Da 30ml,Serum/Dưỡng da,184,3,10853000,4,4,3,Loyal (ổn định),1,Cụm 2 – Nổi bật
+Hasaki,91595,Tẩy Da Chết Môi Cocoon Từ Cà Phê Đắk Lắk 5g,Tẩy tế bào chết,27,3,5880000,5,4,3,Loyal (ổn định),1,Cụm 2 – Nổi bật
+Hasaki,91747,Nước Tẩy Trang Bí Đao Cocoon Làm Sạch & Giảm Dầu 500ml,Tẩy trang,1,16,88552000,5,5,5,Champions (ngôi sao),1,Cụm 2 – Nổi bật
+Hasaki,92215,Tẩy Da Chết Mặt Cocoon Cà Phê Đắk Lắk 150ml,Tẩy tế bào chết,206,5,38573000,4,5,5,Champions (ngôi sao),1,Cụm 2 – Nổi bật
+Hasaki,92253,Combo 2 Tẩy Da Chết Mặt Cocoon Cà Phê Đắk Lắk 150ml,Combo/Set,2068,0,20318000,1,1,4,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
+Hasaki,93917,Gel Rửa Mặt Cocoon Chiết Xuất Từ Hoa Hồng 140ml,Làm sạch mặt,1422,0,1050000,3,1,1,Potential (tiềm năng),2,Cụm 3 – Trung bình
+Hasaki,94089,Tinh Chất Cocoon Cấp Nước & Cấp Ẩm Sâu Từ Hoa Hồng 30ml,Serum/Dưỡng da,811,0,1344000,3,1,1,Potential (tiềm năng),2,Cụm 3 – Trung bình
+Hasaki,94275,Nước Cân Bằng Cocoon Chiết Xuất Từ Nghệ Hưng Yên 140ml,Toner/Xịt khoáng,957,0,2015000,3,1,1,Potential (tiềm năng),2,Cụm 3 – Trung bình
+Hasaki,94277,Sữa Rửa Mặt Cocoon Chiết Xuất Từ Nghệ Hưng Yên 140ml,Làm sạch mặt,371,0,4646000,4,1,2,Potential (tiềm năng),2,Cụm 3 – Trung bình
+Hasaki,94767,Mặt Nạ Nghệ Hưng Yên Cocoon Giúp Da Rạng Rỡ Mịn Màng 30ml,Mặt nạ,41,5,28516000,5,5,5,Champions (ngôi sao),1,Cụm 2 – Nổi bật
+Hasaki,94769,Tinh Chất Cocoon Chiết Xuất Từ Nghệ Hưng Yên 30ml,Serum/Dưỡng da,101,1,2106000,4,4,1,Potential (tiềm năng),2,Cụm 3 – Trung bình
+Hasaki,95751,Gel Rửa Mặt Cocoon Bí Đao Giúp Giảm Dầu & Mụn 310ml,Làm sạch mặt,41,3,26350000,5,4,4,Champions (ngôi sao),1,Cụm 2 – Nổi bật
+Hasaki,95753,Nước Cân Bằng Cocoon Bí Đao Giảm Dầu & Mụn 310ml,Toner/Xịt khoáng,198,3,10967000,4,4,4,Champions (ngôi sao),1,Cụm 2 – Nổi bật
+Hasaki,96269,Mặt Nạ Nghệ Hưng Yên Cocoon Giúp Da Rạng Rỡ Mịn Màng 100ml,Mặt nạ,2068,0,8212000,1,1,3,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
+Hasaki,96273,Nước Tẩy Trang Cocoon Bí Đao Làm Sạch & Giảm Dầu 140ml,Tẩy trang,2068,0,7161000,1,1,3,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
+Hasaki,96589,Combo 2 Nước Tẩy Trang Bí Đao Cocoon Làm Sạch & Giảm Dầu 500ml,Combo/Set,2068,0,381276000,1,1,5,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
+Hasaki,96811,"Tinh Chất Bí Đao Cocoon Làm Giảm Mụn, Mờ Thâm 70ml",Serum/Dưỡng da,49,3,16650000,5,5,4,Champions (ngôi sao),1,Cụm 2 – Nổi bật
+Hasaki,97357,Dầu Xả Bưởi Cocoon Cung Cấp Dưỡng Chất & Độ Ẩm 310ml,Chăm sóc tóc,31,3,6177000,5,5,3,Loyal (ổn định),1,Cụm 2 – Nổi bật
+Hasaki,97359,Dầu Gội Bưởi Cocoon Không Sulfate Và Giảm Gãy Rụng 310ml,Chăm sóc tóc,3,12,21155000,5,5,4,Champions (ngôi sao),1,Cụm 2 – Nổi bật
+Hasaki,97505,Bộ Gội Xả Bưởi Cocoon Không Sulfate Và Giảm Gãy Rụng (310ml/chai),Chăm sóc tóc,2068,0,7202000,1,1,3,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
+Hasaki,97567,Combo 2 Tẩy Da Chết Toàn Thân Cocoon Cà Phê Đắk Lắk 200ml,Combo/Set,2068,0,32218000,1,1,5,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
+Hasaki,98121,Kem Dưỡng Cocoon Dạng Thạch Bí Đao Giảm Dầu & Mụn 30ml,Serum/Dưỡng da,827,0,7189000,3,1,3,Potential (tiềm năng),2,Cụm 3 – Trung bình
+Hasaki,98573,Xịt Khoáng Cocoon Nghệ Hưng Yên Giúp Sáng Da 130ml,Toner/Xịt khoáng,1378,0,2331000,3,1,2,Potential (tiềm năng),2,Cụm 3 – Trung bình
+Hasaki,99505,Túi Refill Tẩy Da Chết Toàn Thân Cocoon Sạch Da 600ml,Tẩy tế bào chết,2068,0,5850000,1,1,3,At Risk (đang nguội),2,Cụm 3 – Trung bình
+Hasaki,100109,Tẩy Da Chết Toàn Thân Cocoon Đường Thốt Nốt An Giang 200ml,Tẩy tế bào chết,52,4,1344000,5,5,1,Potential (tiềm năng),1,Cụm 2 – Nổi bật
+Hasaki,100391,Gel Rửa Mặt Cocoon Bí Đao Giúp Giảm Dầu & Mụn 140ml,Làm sạch mặt,2068,0,5421000,1,1,2,Hibernating (ngủ đông),2,Cụm 3 – Trung bình
+Hasaki,100393,Nước Cân Bằng Cocoon Bí Đao Giảm Dầu & Mụn 140ml,Toner/Xịt khoáng,2068,0,2384000,1,1,2,Hibernating (ngủ đông),2,Cụm 3 – Trung bình
+Hasaki,100835,"Nước Dưỡng Tóc Cocoon Sa-Chi Cấp Ẩm, Phục Hồi Hư Tổn 140ml",Chăm sóc tóc,557,0,609000,3,1,1,Potential (tiềm năng),2,Cụm 3 – Trung bình
+Hasaki,101111,Combo 2 Nước Tẩy Trang Cocoon Bí Đao Làm Sạch & Giảm Dầu 140ml,Combo/Set,2068,0,1521000,1,2,1,Hibernating (ngủ đông),2,Cụm 3 – Trung bình
+Hasaki,101467,Combo Cocoon Big Size Tẩy Da Chết Toàn Thân 600ml & Mặt Từ Cà Phê Đắk Lắk 150ml,Combo/Set,672,0,784000,3,2,1,Potential (tiềm năng),2,Cụm 3 – Trung bình
+Hasaki,101935,Sữa Rửa Mặt Cocoon Chiết Xuất Từ Nghệ Hưng Yên 310ml,Làm sạch mặt,2068,0,17562000,1,2,4,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
+Hasaki,102383,Tinh Chất Cocoon Nghệ Hưng Yên x2.2 Sáng Da Chuyên Sâu 30ml,Serum/Dưỡng da,261,1,7351000,4,4,3,Loyal (ổn định),2,Cụm 3 – Trung bình
+Hasaki,103451,Combo Tẩy Da Chết Cho Mặt & Toàn Thân Từ Cà Phê Đắk Lắk (150ml+200ml),Combo/Set,136,6,65170000,4,5,5,Champions (ngôi sao),1,Cụm 2 – Nổi bật
+Hasaki,103627,Combo 2 Tẩy Da Chết Toàn Thân Cocoon Đường Thốt Nốt An Giang 200ml,Combo/Set,2068,0,15269000,1,2,4,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
+Hasaki,103629,Combo 2 Son Dưỡng Cocoon Dầu Dừa Bến Tre 5g,Combo/Set,2068,0,3024000,1,2,2,Hibernating (ngủ đông),2,Cụm 3 – Trung bình
+Hasaki,103871,Kem Chống Nắng Cocoon Bí Đao Quang Phổ Rộng 50ml,Chống nắng,535,0,9476000,4,2,3,Potential (tiềm năng),0,Cụm 1 – Doanh thu cao
+Hasaki,104359,Combo 2 Mặt Nạ Nghệ Hưng Yên Cocoon Dưỡng Da Mịn Màng 30ml,Combo/Set,2068,0,74703000,1,2,5,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
+Hasaki,104361,Combo 2 Xịt Khoáng Cocoon Nghệ Hưng Yên Sáng Da 130ml,Combo/Set,2068,0,5617000,1,2,3,At Risk (đang nguội),2,Cụm 3 – Trung bình
+Hasaki,105189,Combo Cocoon Gel Rửa Mặt Bí Đao 140ml + Nước Cân Bằng Bí Đao 140ml,Combo/Set,461,0,768000,4,2,1,Potential (tiềm năng),2,Cụm 3 – Trung bình
+Hasaki,105519,Nước Dưỡng Tóc Cocoon Tinh Dầu Bưởi 140ml (Mới),Chăm sóc tóc,52,11,13563000,5,5,4,Champions (ngôi sao),1,Cụm 2 – Nổi bật
+Hasaki,105873,Combo 2 Nước Dưỡng Tóc Cocoon Tinh Dầu Bưởi Phiên Bản Mới 140ml,Combo/Set,2068,0,97292000,1,2,5,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
+Hasaki,106535,Combo Cocoon Nước Dưỡng Tóc Tinh Dầu Bưởi 140ml & Nước Dưỡng Tóc Sa-Chi 140ml,Combo/Set,30,2,248000,5,4,1,Potential (tiềm năng),2,Cụm 3 – Trung bình
+Hasaki,107251,Kem Ủ Tóc Bưởi Cocoon Giảm Gãy Rụng Và Làm Mềm Tóc 200ml,Chăm sóc tóc,547,0,3549000,3,2,2,Potential (tiềm năng),2,Cụm 3 – Trung bình
+Hasaki,107483,Combo Cocoon Dầu Gội 310ml + Nước Dưỡng Tóc 140ml Tinh Dầu Bưởi,Combo/Set,222,1,5365000,4,4,2,Potential (tiềm năng),2,Cụm 3 – Trung bình
+Hasaki,107840,Nước Dưỡng Tóc Cocoon Tinh Dầu Bưởi 310ml,Chăm sóc tóc,2068,0,3754000,1,2,2,Hibernating (ngủ đông),2,Cụm 3 – Trung bình
+Hasaki,107934,Combo Cocoon Nước Tẩy Trang Bí Đao 500ml + Gel Rửa Mặt Bí Đao 310ml,Combo/Set,55,4,258690000,5,5,5,Champions (ngôi sao),1,Cụm 2 – Nổi bật
+Hasaki,109272,"Combo 2 Tinh Chất Bí Đao Cocoon Làm Giảm Mụn, Mờ Thâm 70ml",Combo/Set,2068,0,2589000,2,2,2,Hibernating (ngủ đông),2,Cụm 3 – Trung bình
+Hasaki,110442,Combo Cocoon Dầu Gội Bưởi 310ml + Nước Dưỡng Tóc Tinh Dầu Bưởi 310ml,Combo/Set,2068,0,4480000,2,2,2,Hibernating (ngủ đông),2,Cụm 3 – Trung bình
+Hasaki,110648,Combo 2 Kem Chống Nắng Cocoon Bí Đao Quang Phổ Rộng 50ml,Combo/Set,2068,0,69629000,2,2,5,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
+Hasaki,112793,Dầu Gội Bưởi Cocoon Không Sulfate Và Giảm Gãy Rụng 500ml,Chăm sóc tóc,2068,0,27252000,2,2,5,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
+Hasaki,113217,Bộ Gội Xả Bưởi Cocoon Không Sulfate Và Giảm Gãy Rụng 500ml+310ml,Chăm sóc tóc,2068,0,258970000,2,2,5,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
+Hasaki,113453,Sữa Chống Nắng Cocoon Bí Đao Quang Phổ Rộng 50ml,Chống nắng,14,5,8652000,5,5,3,Loyal (ổn định),1,Cụm 2 – Nổi bật
+Hasaki,114325,"Combo Cocoon Nước Tẩy Trang 500ml + Tinh Chất Bí Đao Giảm Dầu Mụn, Mờ Thâm 70ml",Combo/Set,214,1,4160000,4,4,2,Potential (tiềm năng),2,Cụm 3 – Trung bình
+Hasaki,114573,Bộ Chăm Sóc Tóc Cocoon Dầu Gội 500ml + Dầu Xả 310ml + Nước Dưỡng Tóc Tinh Dầu Bưởi 140ml,Chăm sóc tóc,698,0,12320000,3,3,4,Loyal (ổn định),0,Cụm 1 – Doanh thu cao
+Hasaki,116851,Combo 2 Túi Refill Tẩy Da Chết Toàn Thân Cocoon Sạch Da 600ml,Combo/Set,2068,0,11576000,2,3,4,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
+Hasaki,116853,Combo 2 Gel Rửa Mặt Cocoon Bí Đao Giúp Giảm Dầu & Mụn 310ml,Combo/Set,2068,0,28020000,2,3,5,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
+Hasaki,118552,Túi Refill Dầu Gội Bưởi Cocoon Không Sulfate Và Giảm Gãy Rụng 500ml,Chăm sóc tóc,2068,0,4134000,2,3,2,At Risk (đang nguội),2,Cụm 3 – Trung bình
+Hasaki,123736,Nước Cân Bằng Cocoon Sen Hậu Giang Làm Dịu Da Nhạy Cảm 140ml,Toner/Xịt khoáng,4,6,7260000,5,5,3,Loyal (ổn định),1,Cụm 2 – Nổi bật
+Hasaki,123740,Nước Cân Bằng Cocoon Sen Hậu Giang Làm Dịu Da Nhạy Cảm 310ml,Toner/Xịt khoáng,2068,0,28417000,2,3,5,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
+Hasaki,124092,Combo Cocoon Nước Cân Bằng Sen Hậu Giang 140ml + Nước Tẩy Trang Bí Đao 140ml,Combo/Set,103,11,1344000,4,5,1,Potential (tiềm năng),1,Cụm 2 – Nổi bật
+Hasaki,124096,Combo Cocoon Nước Cân Bằng Sen Hậu Giang 310ml + Nước Tẩy Trang Bí Đao 500ml,Combo/Set,2068,0,336832000,2,3,5,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
+Hasaki,124732,Combo 2 Sữa Chống Nắng Cocoon Bí Đao Quang Phổ Rộng 50ml,Combo/Set,2068,0,61427000,2,3,5,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
+Hasaki,127324,Combo Cocoon Nước Dưỡng Tóc Tinh Dầu Bưởi 140ml+310ml,Combo/Set,2068,0,392000,2,3,1,At Risk (đang nguội),2,Cụm 3 – Trung bình
+Hasaki,127508,Combo Dầu Gội Bưởi Cocoon Không Sulfate Và Giảm Gãy Rụng 310ml+500ml,Combo/Set,2068,0,528000,2,3,1,At Risk (đang nguội),2,Cụm 3 – Trung bình
+Hasaki,130276,Combo 2 Nước Dưỡng Tóc Cocoon Tinh Dầu Bưởi 310ml,Combo/Set,2068,0,3029000,2,3,2,At Risk (đang nguội),2,Cụm 3 – Trung bình
+Hasaki,135269,Dầu Tẩy Trang Cocoon Chiết Xuất Hoa Hồng 310ml,Tẩy trang,2068,0,10340000,2,3,3,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
+Hasaki,137395,Combo Cocoon Mặt Nạ Nghệ Hưng Yên & Tẩy Da Chết Toàn Thân Cà Phê Đắk Lắk 30ml+200ml,Combo/Set,88,7,37960000,4,5,5,Champions (ngôi sao),1,Cụm 2 – Nổi bật
+Hasaki,185748,Nước Dưỡng Tóc Cocoon Bồ Kết Giảm Gàu Cho Da Đầu Nhạy Cảm 140ml,Chăm sóc tóc,159,2,4440000,4,4,2,Potential (tiềm năng),1,Cụm 2 – Nổi bật
+Hasaki,195537,Nước Cân Bằng Cocoon Sen Hậu Giang Làm Dịu Da Nhạy Cảm 500ml,Toner/Xịt khoáng,2068,0,3150000,2,3,2,At Risk (đang nguội),2,Cụm 3 – Trung bình
+Hasaki,195817,Gel Tắm Cocoon Đường Thốt Nốt An Giang 500ml,Chăm sóc body,5,2,4293000,5,4,2,Potential (tiềm năng),1,Cụm 2 – Nổi bật
+Hasaki,197365,Combo 2 Nước Cân Bằng Cocoon Sen Hậu Giang Làm Dịu Da Nhạy Cảm 310ml,Combo/Set,2068,0,15743000,2,3,4,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
+Hasaki,198747,Combo 2 Mặt Nạ Cocoon Bí Đao Giảm Dầu & Mụn 30ml,Combo/Set,2068,0,4392000,3,3,2,Potential (tiềm năng),2,Cụm 3 – Trung bình
+Hasaki,200403,Combo 2 Sữa Rửa Mặt Cocoon Chiết Xuất Từ Nghệ Hưng Yên 310ml,Combo/Set,2068,0,12801000,3,3,4,Loyal (ổn định),0,Cụm 1 – Doanh thu cao
+Hasaki,202943,Combo Cocoon Gel Tắm Đường Thốt Nốt An Giang 500ml + Tẩy Da Chết Toàn Thân Đường Thốt Nốt An Giang 200ml,Combo/Set,60,1,16618000,5,4,4,Champions (ngôi sao),1,Cụm 2 – Nổi bật
+Hasaki,242788,Sữa Rửa Mặt Cocoon Sen Hậu Giang Làm Dịu Da Nhạy Cảm 310ml,Làm sạch mặt,61,5,17353000,4,5,4,Champions (ngôi sao),1,Cụm 2 – Nổi bật
+Hasaki,245252,Combo 2 Kem Dưỡng Cocoon Dạng Thạch Hoa Hồng Dưỡng Ẩm Da 30ml,Combo/Set,2068,0,8630000,3,3,3,Loyal (ổn định),0,Cụm 1 – Doanh thu cao
+Hasaki,247923,Combo 2 Tinh Chất Cocoon Chiết Xuất Từ Nghệ Hưng Yên 30ml,Combo/Set,2068,0,1436000,3,4,1,Potential (tiềm năng),2,Cụm 3 – Trung bình
+Hasaki,247927,Combo Cocoon Nước Cân Bằng Sen Hậu Giang 500ml + Nước Tẩy Trang Bí Đao 500ml,Combo/Set,2068,0,1805000,3,4,1,Potential (tiềm năng),2,Cụm 3 – Trung bình
+Hasaki,248612,Mặt Nạ Cocoon Bí Đao Giảm Dầu & Mụn 100ml (Mới),Mặt nạ,2068,0,1036000,3,4,1,Potential (tiềm năng),2,Cụm 3 – Trung bình
+Shopee,92215,Tẩy tế bào chết mặt cà phê Đắk Lắk Cocoon 150ml,Chăm sóc môi,4,128,13742400000,5,5,4,Champions (ngôi sao),1,Cụm 2 – Nổi bật
+Shopee,86707,Son dưỡng dầu dừa Bến Tre Cocoon 5g,Chăm sóc môi,1,133,3332000000,5,5,1,Potential (tiềm năng),1,Cụm 2 – Nổi bật
+Shopee,112793,Dầu gội bưởi Cocoon giảm gãy rụng 500ml,Chăm sóc tóc,3,168,10314500000,5,5,3,Loyal (ổn định),1,Cụm 2 – Nổi bật
+Shopee,105519,Combo Nước dưỡng tóc tinh dầu bưởi Cocoon 140ml,Combo/Set,8,35,8844000000,5,4,2,Potential (tiềm năng),1,Cụm 2 – Nổi bật
+Shopee,91747,Nước tẩy trang bí đao Cocoon 500ml,Tẩy trang,13,119,18408000000,4,5,4,Champions (ngôi sao),1,Cụm 2 – Nổi bật
+Shopee,92253,Combo 2 Tẩy tế bào chết mặt cà phê Đắk Lắk Cocoon 150ml,Combo/Set,16,66,11956000000,4,4,3,Loyal (ổn định),1,Cụm 2 – Nổi bật
+Shopee,101935,Sữa rửa mặt nghệ Hưng Yên Cocoon 310ml,Làm sạch mặt,3,196,7080500000,5,5,2,Potential (tiềm năng),1,Cụm 2 – Nổi bật
+Shopee,278725,Gel tắm bí đao Cocoon giảm mụn lưng 500ml,Chăm sóc body,3,213,13304500000,5,5,3,Loyal (ổn định),1,Cụm 2 – Nổi bật
+Shopee,108901,Kem chống nắng bí đao Cocoon quang phổ rộng 50ml,Chống nắng,104,21,24529500000,2,2,5,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
+Shopee,108902,Mặt nạ nghệ Hưng Yên Cocoon dưỡng sáng da 100ml,Mặt nạ,95,23,6141000000,3,3,2,Potential (tiềm năng),2,Cụm 3 – Trung bình
+Shopee,108903,Tẩy tế bào chết body cà phê Đắk Lắk Cocoon 200ml,Tẩy tế bào chết,134,11,7078500000,1,1,2,Hibernating (ngủ đông),2,Cụm 3 – Trung bình
+Shopee,108904,Nước hoa hồng Cocoon cấp ẩm sâu 310ml,Toner/Xịt khoáng,87,28,16905000000,4,4,4,Champions (ngôi sao),0,Cụm 1 – Doanh thu cao
+Shopee,108905,Tinh chất bí đao Cocoon giảm mụn mờ thâm 70ml,Serum/Dưỡng da,110,21,19913400000,1,2,5,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
+Shopee,108906,Gel rửa mặt bí đao Cocoon giảm dầu mụn 310ml,Làm sạch mặt,95,30,777400000,3,4,1,Potential (tiềm năng),2,Cụm 3 – Trung bình
+Shopee,108907,Xịt thâm mụn lưng bí đao Cocoon 140ml,Chăm sóc body,119,19,11992500000,1,1,3,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
+Shopee,108908,Dầu xả bưởi Cocoon giảm gãy rụng tóc 310ml,Chăm sóc tóc,88,20,12636000000,4,1,3,Potential (tiềm năng),0,Cụm 1 – Doanh thu cao
+Shopee,108909,Mặt nạ bí đao Cocoon thông thoáng lỗ chân lông 100ml,Mặt nạ,107,21,22611300000,1,2,5,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
+Shopee,108910,Tẩy da chết đường thốt nốt An Giang Cocoon 200ml,Tẩy tế bào chết,98,21,11517000000,2,2,3,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
+Shopee,108911,Nước cân bằng bí đao Cocoon 140ml,Toner/Xịt khoáng,90,25,1384500000,3,3,1,Potential (tiềm năng),2,Cụm 3 – Trung bình
+Shopee,108912,Dầu tẩy trang hoa hồng Cocoon 140ml,Tẩy trang,91,16,15282000000,3,1,4,Potential (tiềm năng),0,Cụm 1 – Doanh thu cao
+Shopee,108913,Sữa rửa mặt sen Hậu Giang Cocoon dịu nhẹ 310ml,Làm sạch mặt,106,28,16594500000,1,4,4,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
+Shopee,108914,Kem dưỡng dạng thạch hoa hồng Cocoon 30ml,Serum/Dưỡng da,97,20,5947500000,2,2,2,Hibernating (ngủ đông),2,Cụm 3 – Trung bình
+Shopee,108915,Tẩy tế bào chết môi cà phê Đắk Lắk Cocoon 5g,Tẩy tế bào chết,103,26,5527500000,2,3,1,At Risk (đang nguội),2,Cụm 3 – Trung bình
+Shopee,108916,Xịt khoáng nghệ Hưng Yên Cocoon sáng da 130ml,Toner/Xịt khoáng,95,24,5912500000,3,3,2,Potential (tiềm năng),2,Cụm 3 – Trung bình
+Shopee,108917,Kem ủ tóc bưởi Cocoon phục hồi hư tổn 200ml,Chăm sóc tóc,90,22,4343000000,4,3,1,Potential (tiềm năng),2,Cụm 3 – Trung bình
+Shopee,108918,Nước dưỡng tóc Sa-chi Cocoon cấp ẩm 140ml,Chăm sóc tóc,87,19,652500000,4,1,1,Potential (tiềm năng),2,Cụm 3 – Trung bình
+Shopee,108919,Túi Refill Tẩy da chết body cà phê Cocoon 600ml,Tẩy tế bào chết,94,21,20679000000,3,2,5,Potential (tiềm năng),0,Cụm 1 – Doanh thu cao
+Shopee,108920,Túi Refill Dầu gội bưởi Cocoon 500ml,Chăm sóc tóc,136,19,25312500000,1,1,5,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
+Shopee,108921,Combo Dầu gội + Dầu xả bưởi Cocoon 500ml,Combo/Set,105,26,15792000000,2,3,4,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
+Shopee,108922,Combo Nước tẩy trang + Gel rửa mặt bí đao Cocoon,Combo/Set,100,34,33216000000,2,4,5,At Risk (đang nguội),0,Cụm 1 – Doanh thu cao
