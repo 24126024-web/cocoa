@@ -496,11 +496,11 @@ with tabs[3], guard("Kết quả mô hình"):
         ("C. Topic modeling - TF-IDF + NMF", ["C_topic_tong_hop"], ["C_topic_tu_khoa", "C_topic_san_sao"]),
     ]
 
-    def _find_model_file(name, ext):
-        for d in (du.MODEL_DIR, du.MODEL_DIR / "tables", du.MODEL_DIR / "figures"):
-            p = d / f"{name}.{ext}"
-            if p.exists():
-                return p
+        def _find_model_file(name, ext):
+        for root in (du.HERE / "dataset", du.HERE.parent / "dataset", du.HERE.parent):
+            if root.exists():
+                for p in root.rglob(f"{name}.{ext}"):
+                    return p
         return None
 
     found = False
@@ -522,9 +522,12 @@ with tabs[3], guard("Kết quả mô hình"):
                 st.markdown(f"**{n}**")
                 st.dataframe(pd.read_csv(p), use_container_width=True, hide_index=True)
 
-    if not found:
-        st.info(f"Chưa có file kết quả. Hãy đặt thư mục tables/ và figures/ vào: {du.MODEL_DIR}")
-
+        if not found:
+        st.info("Chưa có file kết quả A1, A2, B1, B2, B3, C trong repo.")
+        _all = sorted(str(p.relative_to(du.HERE.parent)) for p in du.HERE.parent.rglob("*")
+                      if p.suffix.lower() in (".csv", ".png") and ".git" not in p.parts)
+        st.caption("Các file CSV/PNG đang có trong repo:")
+        st.code("\n".join(_all[:60]) if _all else "(không có file nào)")
 
 if admin:
     with tabs[4], guard("Quản trị"):
