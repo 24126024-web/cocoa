@@ -6,6 +6,9 @@ from __future__ import annotations
 
 import io
 import os
+import re
+import traceback
+from contextlib import contextmanager
 from pathlib import Path
 
 import pandas as pd
@@ -138,6 +141,28 @@ def style_plotly_figure(fig, title=""):
     return fig
 
 
+@contextmanager
+def guard(name: str):
+    """Tab nào lỗi thì hiện khung đỏ ngay trong tab đó, không làm các tab khác bị trống."""
+    try:
+        yield
+    except Exception as e:  # noqa: BLE001
+        st.error(f"Lỗi ở tab «{name}»: {type(e).__name__}: {e}")
+        with st.expander("Chi tiết lỗi (gửi cho người hỗ trợ)"):
+            st.code(traceback.format_exc())
+
+
+_ILLEGAL_XL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
+
+
+def xl_clean(d: pd.DataFrame) -> pd.DataFrame:
+    """Bỏ ký tự điều khiển để ghi Excel không bị lỗi."""
+    d = d.copy()
+    for c in d.select_dtypes(include=["object"]).columns:
+        d[c] = d[c].map(lambda v: _ILLEGAL_XL.sub("", v) if isinstance(v, str) else v)
+    return d
+
+
 ALLOW_USER_EXPORT = True
 
 auth.login_gate()
@@ -246,7 +271,7 @@ if admin:
 tabs = st.tabs(tab_names)
 
 
-with tabs[0]:
+with tabs[0], guard("Tổng quan"):
     k1, k2, k3, k4, k5 = st.columns(5)
     k1.metric("Số sản phẩm", fmt_int(len(prod)))
     k2.metric("Số review", fmt_int(len(rv)))
@@ -321,16 +346,19 @@ with tabs[0]:
 
     with g2:
         mt = du.monthly_table(df)
-        fig = px.line(
-            mt, 
-            x="Tháng", 
-            y="Số review", 
-            color="Nguồn", 
-            markers=True, 
-            color_discrete_map=MAP_SOURCES
-        )
-        fig = style_plotly_figure(fig, "Xu hướng số lượng review theo tháng")
-        st.plotly_chart(fig, use_container_width=True)
+        if len(mt):
+            fig = px.line(
+                mt, 
+                x="Tháng", 
+                y="Số review", 
+                color="Nguồn", 
+                markers=True, 
+                color_discrete_map=MAP_SOURCES
+            )
+            fig = style_plotly_figure(fig, "Xu hướng số lượng review theo tháng")
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Chưa có dữ liệu review theo tháng.")
 
     g3, g4 = st.columns(2)
     with g3:
@@ -360,11 +388,12 @@ with tabs[0]:
         st.plotly_chart(fig, use_container_width=True)
 
 
-with tabs[1]:
+with tabs[1], guard("Dữ liệu"):
     st.subheader("Bảng sản phẩm")
     st.dataframe(prod, use_container_width=True, hide_index=True)
     st.subheader("Bảng review")
     show = ["Nguồn", "Mã SP", "Tên sản phẩm", "Hạng mục", "Số sao", "Cảm xúc", "Nội dung review", "Ngày review", "Đã mua hàng"]
+    show = [c for c in show if c in rv.columns]
     st.dataframe(rv[show].sort_values("Ngày review", ascending=False).head(2000), use_container_width=True, hide_index=True)
     if len(rv) > 2000:
         st.caption("Hiển thị 2.000 review mới nhất; bản xuất file (Admin) chứa đầy đủ.")
@@ -373,3 +402,169 @@ with tabs[1]:
     # KẾT XUẤT BÁO CÁO (CSV UTF-8-SIG & EXCEL MULTI-SHEET)
     # ---------------------------------------------------------
     st.markdown("---")
+    st.subheader("📥 Kết xuất báo cáo dữ liệu")
+
+    if admin or ALLOW_USER_EXPORT:
+        # 1. Chuẩn bị bảng tóm tắt chỉ số KPI
+        summary_df = pd.DataFrame({
+            "Chỉ số": ["Tổng số review", "Tổng số sản phẩm", "Điểm sao trung bình", "Tỉ lệ tích cực (4-5 sao)", "Tỉ lệ tiêu cực (1-2 sao)"],
+            "Giá trị": [
+                len(rv),
+                len(prod),
+                round(rv["Số sao"].mean(), 2) if len(rv) else None,
+                f"{round((rv['Số sao'] >= 4).mean() * 100, 1)}%" if len(rv) else "-",
+                f"{round((rv['Số sao'] <= 2).mean() * 100, 1)}%" if len(rv) else "-"
+            ],
+        })
+
+        # Lọc bỏ các cột kỹ thuật nội bộ trước khi xuất file
+        clean_df = rv.drop(columns=["rid", "Tháng"], errors="ignore")
+
+        # Chia 3 cột chứa 3 nút tải
+        d1, d2, d3 = st.columns(3)
+
+        # Nút 1: Tải file CSV Review (mã hóa utf-8-sig hiển thị Tiếng Việt chuẩn)
+        csv_rev_bytes = clean_df.to_csv(index=False).encode("utf-8-sig")
+        d1.download_button(
+            label="📄 Tải Review (CSV)",
+            data=csv_rev_bytes,
+            file_name="cocoon_reviews.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+
+        # Nút 2: Tải file CSV Sản phẩm
+        csv_prod_bytes = prod.to_csv(index=False).encode("utf-8-sig")
+        d2.download_button(
+            label="📄 Tải Sản Phẩm (CSV)",
+            data=csv_prod_bytes,
+            file_name="cocoon_products.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+
+        # Nút 3: Tải file Excel (.xlsx) chứa 3 Sheet: Tóm tắt, Sản phẩm, Review
+        try:
+            excel_buffer = io.BytesIO()
+            with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
+                xl_clean(summary_df).to_excel(writer, sheet_name="Tóm Tắt Chỉ Số", index=False)
+                xl_clean(prod).to_excel(writer, sheet_name="Danh Sách Sản Phẩm", index=False)
+                xl_clean(clean_df).to_excel(writer, sheet_name="Chi Tiết Review", index=False)
+
+            d3.download_button(
+                label="📊 Tải Báo Cáo (Excel)",
+                data=excel_buffer.getvalue(),
+                file_name="cocoon_analytics_report.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True
+            )
+        except Exception as e:
+            d3.warning(f"Không tạo được file Excel: {e}")
+    else:
+        st.info("🔒 Tính năng tải dữ liệu hiện bị khóa bởi Quản trị viên.")
+
+
+with tabs[2], guard("Power BI"):
+    try:
+        from powerbi_dashboard import render_powerbi_dashboard
+        render_powerbi_dashboard(**get_powerbi_tables(du.data_signature()))
+    except ModuleNotFoundError as e:
+        st.error(f"Thiếu file `powerbi_dashboard.py` hoặc thư viện `plotly` ({e}) - hãy đặt file cùng thư mục với app.py và thêm plotly vào requirements.txt.")
+    except AttributeError as e:
+        st.error(f"File data_utils.py chưa cập nhật (thiếu hàm load_powerbi_tables): {e}")
+    except Exception as e:
+        st.error(f"Không dựng được dashboard Power BI: {type(e).__name__}: {e}")
+        with st.expander("Chi tiết lỗi"):
+            st.code(traceback.format_exc())
+
+
+with tabs[3], guard("Kết quả mô hình"):
+    st.subheader("Kết quả mô hình (Giai đoạn 4)")
+    st.caption("Kết quả từ notebook huấn luyện mô hình trên dữ liệu Shopee & Hasaki.")
+
+    MODEL_SECTIONS = [
+        ("Tổng quan dữ liệu", [], ["00_eda_tong_quan"]),
+        ("A1. Dự báo review tiêu cực - Logistic Regression / Decision Tree / Random Forest",
+         ["A1_phan_loai_chi_so", "A1_bang_nguong_canh_bao", "A1_tu_khoa_tieu_cuc", "A1_canh_bao_cskh"],
+         ["A1_so_sanh_va_confusion_matrix", "A1_tu_khoa"]),
+        ("A2. Dự báo doanh thu 30 ngày Hasaki - Hồi quy",
+         ["A2_hoi_quy_chi_so_test", "A2_hoi_quy_chi_so_cv", "A2_phan_du_san_pham"],
+         ["A2_hoi_quy", "A2_do_quan_trong_dac_trung"]),
+        ("B1. Phân khúc RFM sản phẩm", ["B1_rfm_san_pham"], ["B1_rfm_phan_khuc"]),
+        ("B2. K-Means - phân cụm sản phẩm", ["B2_kmeans_dac_trung_cum"], ["B2_kmeans"]),
+        ("B3. Luật kết hợp - Apriori / FP-Growth", ["B3_luat_ket_hop"], ["B3_luat_ket_hop"]),
+        ("C. Topic modeling - TF-IDF + NMF", ["C_topic_tong_hop"], ["C_topic_tu_khoa", "C_topic_san_sao"]),
+    ]
+
+    def _find_model_file(name, ext):
+        for d in (du.MODEL_DIR, du.MODEL_DIR / "tables", du.MODEL_DIR / "figures"):
+            p = d / f"{name}.{ext}"
+            if p.exists():
+                return p
+        return None
+
+    found = False
+    for i, (title, tables, figures) in enumerate(MODEL_SECTIONS):
+        t_files = [(n, _find_model_file(n, "csv")) for n in tables]
+        f_files = [(n, _find_model_file(n, "png")) for n in figures]
+        t_files = [(n, p) for n, p in t_files if p]
+        f_files = [(n, p) for n, p in f_files if p]
+        if not t_files and not f_files:
+            continue
+        found = True
+        with st.expander(title, expanded=(i == 1)):
+            for n, p in f_files:
+                try:
+                    st.image(str(p), width="stretch")
+                except TypeError:
+                    st.image(str(p), use_container_width=True)
+            for n, p in t_files:
+                st.markdown(f"**{n}**")
+                st.dataframe(pd.read_csv(p), use_container_width=True, hide_index=True)
+
+    if not found:
+        st.info(f"Chưa có file kết quả. Hãy đặt thư mục tables/ và figures/ vào: {du.MODEL_DIR}")
+
+
+if admin:
+    with tabs[4], guard("Quản trị"):
+        st.subheader("Quản trị dữ liệu")
+        st.caption("Xóa là *xóa mềm*: file dữ liệu gốc không bị sửa, có thể khôi phục.")
+
+        st.markdown("**1. Chọn từng review để xóa** (tối đa 300 dòng theo bộ lọc hiện tại)")
+        cols = ["rid", "Nguồn", "Tên sản phẩm", "Số sao", "Nội dung review"]
+        sample = rv[cols].head(300).copy()
+        sample.insert(0, "Xóa", False)
+        edited = st.data_editor(
+            sample,
+            hide_index=True,
+            use_container_width=True,
+            key="del_editor",
+            disabled=cols,
+            column_config={
+                "Xóa": st.column_config.CheckboxColumn("Xóa"),
+                "rid": st.column_config.TextColumn("ID")
+            }
+        )
+        picked = edited.loc[edited["Xóa"], "rid"].tolist()
+        if st.button(f"Xóa {len(picked)} review đã chọn", disabled=not picked):
+            n = du.delete_rows(picked, user["username"])
+            st.success(f"Đã xóa {n} review.")
+            st.rerun()
+
+        st.markdown("**2. Xóa toàn bộ review đang lọc**")
+        confirm = st.text_input(f"Gõ XOA để xác nhận xóa {len(rv)} review", key="confirm_all")
+        if st.button("Xóa toàn bộ kết quả lọc", disabled=confirm != "XOA"):
+            n = du.delete_rows(rv["rid"].tolist(), user["username"])
+            st.success(f"Đã xóa {n} review.")
+            st.rerun()
+
+        st.markdown("**3. Nhật ký xóa / khôi phục**")
+        log = du.load_deleted()
+        if log:
+            st.dataframe(pd.DataFrame(log), use_container_width=True, hide_index=True)
+            if st.button("Khôi phục tất cả"):
+                du.restore_all()
+                st.rerun()
+        else:
+            st.write("Chưa có review nào bị xóa.")
