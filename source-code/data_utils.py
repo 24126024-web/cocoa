@@ -156,7 +156,7 @@ def load_base() -> pd.DataFrame:
             "Đã mua hàng": sp_merged["Đã mua hàng"] if "Đã mua hàng" in sp_merged.columns else "Có",
         })
 
-        # ---------------- Hasaki: file sản phẩm làm gốc -> đủ mọi sản phẩm ----------------
+        # ---------------- Hasaki: file sản phẩm làm gốc  ----------------
         if not hk_p.empty:
             hk_base = hk_p.drop_duplicates("Mã SP")
             if not hk_r.empty and "Mã SP" in hk_r.columns:
@@ -208,9 +208,9 @@ def load_base() -> pd.DataFrame:
         return pd.DataFrame()
 
 
-# ----------------------------------------------------------------------------
+
 # Dữ liệu cho tab Power BI (đúng tên cột mà powerbi_dashboard.py cần)
-# ----------------------------------------------------------------------------
+
 _SOLD_COL = {"Shopee": "Lượt bán", "Hasaki": "Lượt bán (30 ngày)"}
 
 
@@ -273,9 +273,9 @@ def load_powerbi_tables() -> dict:
     }
 
 
-# ----------------------------------------------------------------------------
+
 # Xóa mềm
-# ----------------------------------------------------------------------------
+
 def load_deleted() -> list[dict]:
     if DELETED_FILE.exists():
         try:
@@ -311,9 +311,9 @@ def apply_deletions(df: pd.DataFrame) -> pd.DataFrame:
     return df[~df["rid"].isin(gone)] if gone else df
 
 
-# ----------------------------------------------------------------------------
+
 # Bảng tổng hợp
-# ----------------------------------------------------------------------------
+
 def product_table(df: pd.DataFrame) -> pd.DataFrame:
     """Mỗi (Nguồn, Mã SP) đúng 1 dòng; 'Số review' chỉ đếm review thật."""
     if df is None or not isinstance(df, pd.DataFrame) or df.empty:
