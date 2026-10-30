@@ -537,7 +537,7 @@ with tabs[2], guard("Power BI"):
 
 
 with tabs[3], guard("Kết quả mô hình"):
-    st.subheader("Kết quả mô hình (Giai đoạn 4)")
+    st.subheader("Kết quả mô hình")
     st.caption("Kết quả từ notebook huấn luyện mô hình trên dữ liệu Shopee & Hasaki.")
 
     MODEL_SECTIONS = [
