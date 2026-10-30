@@ -11,7 +11,7 @@ import streamlit as st
 
 MAX_ATTEMPTS = 5
 
-# 1. HÀM TÌM ĐƯỜNG DẪN ẢNH THÔNG MINH (TRÁNH LỖI ĐƯỜNG DẪN)
+# 1. HÀM TÌM ĐƯỜNG DẪN ẢNH THÔNG MINH 
 def find_asset_path(filename: str) -> Path:
     current_dir = Path(__file__).resolve().parent
     possible_dirs = [
@@ -26,7 +26,7 @@ def find_asset_path(filename: str) -> Path:
             return file_path
     return current_dir / "assets" / filename
 
-# KHAI BÁO BIẾN LOGO CỐ ĐỊNH ĐỂ APP.PY KHÔNG BỊ LỖI ATTRIBUTEERROR
+# KHAI BÁO BIẾN LOGO CỐ ĐỊNH ĐỂ APP.PY 
 LOGO = find_asset_path("logo1.png")
 if not LOGO.exists():
     LOGO = find_asset_path("logo.png")
