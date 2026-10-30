@@ -23,9 +23,9 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-# ----------------------------------------------------------------------------
+
 # 1. CẤU HÌNH TÊN CỘT (sửa ở đây nếu file dữ liệu đặt tên khác)
-# ----------------------------------------------------------------------------
+
 ID, NAME, CAT = "Mã SP", "Tên sản phẩm", "Category"
 PRICE, ORIG, DISC = "Giá bán", "Giá gốc", "% Giảm giá"
 REV, RATING, STATUS = "Doanh thu 30 ngày", "Điểm đánh giá TB", "Trang_Thai_Mau"
@@ -48,9 +48,9 @@ BIN_LABELS = ["<100K", "100–200K", "200–300K", "300–500K", "500K–1M", ">
 PERIOD = {"Ngày": "D", "Tuần": "W", "Tháng": "M", "Quý": "Q", "Năm": "Y"}
 
 
-# ----------------------------------------------------------------------------
+
 # 2. TIỆN ÍCH
-# ----------------------------------------------------------------------------
+
 @contextmanager
 def safe(label: str = ""):
     """Một biểu đồ lỗi không làm sập cả trang."""
@@ -226,9 +226,9 @@ def grouped_price(g, title, plat):
     return fig
 
 
-# ----------------------------------------------------------------------------
+
 # 3. CHUẨN BỊ DỮ LIỆU
-# ----------------------------------------------------------------------------
+
 def _clean_id(d: pd.DataFrame) -> pd.DataFrame:
     if ID in d:
         d[ID] = d[ID].astype(str).str.strip().str.replace(r"\.0$", "", regex=True)
@@ -301,9 +301,9 @@ def is_verified(r: pd.DataFrame):
         ["true", "1", "1.0", "yes", "có", "co", "đã mua", "đã mua hàng", "verified"])
 
 
-# ----------------------------------------------------------------------------
+
 # 4. TRANG 1 – TỔNG QUAN
-# ----------------------------------------------------------------------------
+
 def page_overview(p: pd.DataFrame, plat: str) -> None:
     sold = SOLD[plat]
     banner(THEME[plat]["title"], plat)
@@ -358,9 +358,9 @@ def page_overview(p: pd.DataFrame, plat: str) -> None:
             show(fig, plat, 400)
 
 
-# ----------------------------------------------------------------------------
+
 # 5. TRANG 2 – PHÂN TÍCH SẢN PHẨM
-# ----------------------------------------------------------------------------
+
 def page_products(p: pd.DataFrame, plat: str) -> None:
     sold = SOLD[plat]
     if plat == "Shopee":
@@ -421,9 +421,9 @@ def page_products(p: pd.DataFrame, plat: str) -> None:
             show(vbar(g, CAT, sold, "Tổng lượt bán 30 ngày theo danh mục", plat, text=",.0f", full=CAT), plat, 380)
 
 
-# ----------------------------------------------------------------------------
+
 # 6. TRANG 3 – PHÂN TÍCH ĐÁNH GIÁ
-# ----------------------------------------------------------------------------
+
 def page_reviews(p: pd.DataFrame, r: pd.DataFrame, plat: str) -> None:
     banner("PHÂN TÍCH ĐÁNH GIÁ VÀ TRẢI NGHIỆM CỦA KHÁCH HÀNG", plat)
     if r.empty or R_STAR not in r:
@@ -476,9 +476,9 @@ def page_reviews(p: pd.DataFrame, r: pd.DataFrame, plat: str) -> None:
         show(hbar(g, "diem", "Điểm đánh giá trung bình theo sản phẩm", plat, text=".2f"), plat, 420)
 
 
-# ----------------------------------------------------------------------------
+
 # 7. TRANG 4 – LIỆT KÊ MIN / MAX
-# ----------------------------------------------------------------------------
+
 def page_minmax(p: pd.DataFrame, r: pd.DataFrame, plat: str) -> None:
     banner(f"DASHBOARD {plat.upper()} COCOON", plat)
     sold = SOLD[plat]
@@ -513,9 +513,9 @@ def page_minmax(p: pd.DataFrame, r: pd.DataFrame, plat: str) -> None:
         show_df(pd.DataFrame(rr))
 
 
-# ----------------------------------------------------------------------------
+
 # 8. ĐỌC DỮ LIỆU TỰ ĐỘNG (chỉ dùng khi không truyền DataFrame)
-# ----------------------------------------------------------------------------
+
 def _read_any(path: Path) -> pd.DataFrame:
     if path.suffix.lower() in (".xlsx", ".xls"):
         return pd.read_excel(path)
@@ -535,9 +535,9 @@ def load_datasets(folder: str = "dataset") -> dict:
     return out
 
 
-# ----------------------------------------------------------------------------
+
 # 9. HÀM CHÍNH
-# ----------------------------------------------------------------------------
+
 def render_powerbi_dashboard(products_shopee=None, reviews_shopee=None,
                              products_hasaki=None, reviews_hasaki=None) -> None:
     if products_shopee is None and products_hasaki is None:
