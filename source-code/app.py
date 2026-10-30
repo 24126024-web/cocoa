@@ -33,9 +33,9 @@ st.set_page_config(
     layout="wide"
 )
 
-# ==========================================
+
 # CUSTOM CSS DASHBOARD EXECUTIVE UI
-# ==========================================
+
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -456,9 +456,9 @@ with tabs[1], guard("Dữ liệu"):
     if len(rv) > 2000:
         st.caption("Hiển thị 2.000 review mới nhất; bản xuất file (Admin) chứa đầy đủ.")
 
-    # ---------------------------------------------------------
+   
     # KẾT XUẤT BÁO CÁO (CSV UTF-8-SIG & EXCEL MULTI-SHEET)
-    # ---------------------------------------------------------
+   
     st.markdown("---")
     st.subheader("📥 Kết xuất báo cáo dữ liệu")
 
