@@ -180,7 +180,7 @@ def get_powerbi_tables(signature: tuple) -> dict:
     return du.load_powerbi_tables()
 
 
-base = du.apply_deletions(get_base(du.data_signature()))
+base = du.apply_deletions(du.apply_crud(get_base(du.data_signature())))
 
 
 def fmt_int(x) -> str:
