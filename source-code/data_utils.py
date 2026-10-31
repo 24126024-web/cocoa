@@ -1,13 +1,13 @@
 """Nạp, phân loại, lọc và xuất dữ liệu Cocoon (Shopee & Hasaki)."""
 from __future__ import annotations
 
-import sqlite3
-import zipfile
-from contextlib import closing
 import io
 import json
 import re
+import sqlite3
 import unicodedata
+import zipfile
+from contextlib import closing
 from datetime import datetime
 from pathlib import Path
 
@@ -42,6 +42,11 @@ if not DELETED_FILE.parent.exists():
     DELETED_FILE = HERE / "deleted_rows.json"
 
 MODEL_DIR = HERE / "dataset" / "model_outputs"
+
+# SQLite (DBMS)
+_DB_DIR = HERE / "dataset"
+DB_PATH = (_DB_DIR if _DB_DIR.exists() else HERE) / "cocoon.db"
+_DB_TABLES = ("hasaki_products", "hasaki_reviews", "shopee_products", "shopee_reviews")
 
 
 def _norm(s: str) -> str:
@@ -134,6 +139,39 @@ def _load_raw_excel():
     return hk_p, hk_r, sp_p, sp_r
 
 
+# ---------------------------------------------------------------------
+# SQLite
+# ---------------------------------------------------------------------
+def _db_read(table: str) -> pd.DataFrame:
+    if not DB_PATH.exists():
+        return pd.DataFrame()
+    try:
+        with closing(sqlite3.connect(DB_PATH)) as con:
+            return pd.read_sql(f'SELECT * FROM "{table}"', con)
+    except Exception:
+        return pd.DataFrame()
+
+
+def _db_has(table: str) -> bool:
+    if not DB_PATH.exists():
+        return False
+    try:
+        with closing(sqlite3.connect(DB_PATH)) as con:
+            row = con.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
+            ).fetchone()
+        return row is not None
+    except Exception:
+        return False
+
+
+def _load_raw():
+    """Ưu tiên đọc từ SQLite; chưa có DB thì đọc Excel như cũ."""
+    if any(_db_has(t) for t in _DB_TABLES):
+        return tuple(_clean_raw(_db_read(t)) for t in _DB_TABLES)
+    return _load_raw_excel()
+
+
 def load_base() -> pd.DataFrame:
     try:
         hk_p, hk_r, sp_p, sp_r = _load_raw()
@@ -211,7 +249,6 @@ def load_base() -> pd.DataFrame:
         return pd.DataFrame()
 
 
-
 # Dữ liệu cho tab Power BI (đúng tên cột mà powerbi_dashboard.py cần)
 
 _SOLD_COL = {"Shopee": "Lượt bán", "Hasaki": "Lượt bán (30 ngày)"}
@@ -276,7 +313,6 @@ def load_powerbi_tables() -> dict:
     }
 
 
-
 # Xóa mềm
 
 def load_deleted() -> list[dict]:
@@ -313,6 +349,109 @@ def apply_deletions(df: pd.DataFrame) -> pd.DataFrame:
     gone = {d["rid"] for d in log if isinstance(d, dict) and "rid" in d}
     return df[~df["rid"].isin(gone)] if gone else df
 
+
+# ---------------------------------------------------------------------
+# CRUD: Create + Update
+# ---------------------------------------------------------------------
+def add_review(source: str, ma_sp: str, stars: int, content: str, date) -> str:
+    """Thêm review mới. Trả về rid."""
+    rid = f"NEW-{datetime.now():%Y%m%d%H%M%S%f}"
+    row = pd.DataFrame([{
+        "rid": rid,
+        "Nguồn": source,
+        "Mã SP": str(ma_sp),
+        "Số sao": float(stars),
+        "Nội dung review": content,
+        "Ngày review": pd.Timestamp(date).isoformat(),
+    }])
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        row.to_sql("custom_reviews", con, if_exists="append", index=False)
+        con.commit()
+    return rid
+
+
+def update_review(rid: str, stars, content: str) -> None:
+    """Sửa số sao / nội dung của một review (lưu dạng bản ghi ghi đè)."""
+    row = pd.DataFrame([{
+        "rid": rid,
+        "Số sao": float(stars),
+        "Nội dung review": content,
+        "at": datetime.now().isoformat(timespec="seconds"),
+    }])
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        row.to_sql("review_updates", con, if_exists="append", index=False)
+        con.commit()
+
+
+def apply_crud(df: pd.DataFrame) -> pd.DataFrame:
+    """Áp review thêm mới + review đã sửa lên bảng base."""
+    if df is None or not isinstance(df, pd.DataFrame) or df.empty:
+        return df
+    df = df.copy()
+
+    ups = _db_read("review_updates")
+    if not ups.empty:
+        ups = ups.drop_duplicates("rid", keep="last").set_index("rid")
+        m = df["rid"].isin(ups.index)
+        df.loc[m, "Số sao"] = df.loc[m, "rid"].map(ups["Số sao"])
+        df.loc[m, "Nội dung review"] = df.loc[m, "rid"].map(ups["Nội dung review"])
+
+    new = _db_read("custom_reviews")
+    if not new.empty:
+        rows = []
+        for _, r in new.iterrows():
+            tpl = df[(df["Nguồn"] == r["Nguồn"]) & (df["Mã SP"].astype(str) == str(r["Mã SP"]))]
+            if tpl.empty:
+                continue
+            row = tpl.iloc[0].copy()
+            row["rid"] = r["rid"]
+            row["Số sao"] = r["Số sao"]
+            row["Nội dung review"] = r["Nội dung review"]
+            row["Ngày review"] = r["Ngày review"]
+            rows.append(row)
+        if rows:
+            df = pd.concat([df, pd.DataFrame(rows)], ignore_index=True)
+
+    df["Số sao"] = pd.to_numeric(df["Số sao"], errors="coerce")
+    df["Ngày review"] = pd.to_datetime(df["Ngày review"], errors="coerce").dt.normalize()
+    df["Tháng"] = df["Ngày review"].dt.to_period("M").dt.to_timestamp()
+    df["Cảm xúc"] = df["Số sao"].apply(sentiment_from_star)
+    return df
+
+
+# ---------------------------------------------------------------------
+# Sao lưu / phục hồi
+# ---------------------------------------------------------------------
+_BACKUP_FILES = {"cocoon.db": lambda: DB_PATH, "deleted_rows.json": lambda: DELETED_FILE}
+
+
+def make_backup() -> bytes:
+    """Nén cocoon.db + deleted_rows.json thành 1 file zip (trong bộ nhớ)."""
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for arcname, getter in _BACKUP_FILES.items():
+            p = getter()
+            if p.exists():
+                z.write(p, arcname)
+    return buf.getvalue()
+
+
+def restore_backup(data: bytes) -> list[str]:
+    """Khôi phục từ file zip backup. Chỉ chấp nhận đúng 2 tên file ở trên."""
+    restored = []
+    with zipfile.ZipFile(io.BytesIO(data)) as z:
+        names = set(z.namelist())
+        if not names & set(_BACKUP_FILES):
+            raise ValueError("File zip không phải bản sao lưu của Cocoon Analytics.")
+        for arcname, getter in _BACKUP_FILES.items():
+            if arcname in names:
+                dest = getter()
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                dest.write_bytes(z.read(arcname))
+                restored.append(arcname)
+    return restored
 
 
 # Bảng tổng hợp
