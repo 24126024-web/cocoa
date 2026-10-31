@@ -607,17 +607,17 @@ if admin:
         )
 
         # ---------------- UPDATE + DELETE từng dòng ----------------
-        with a_edit:
+               with a_edit:
             st.markdown("Sửa trực tiếp **Số sao** và **Nội dung review** trong bảng, hoặc tick **Xóa** "
                         "(tối đa 300 dòng theo bộ lọc hiện tại).")
-            st.caption("Sửa xong một ô, nhấn **Enter** hoặc bấm ra ngoài ô để ghi nhận, rồi bấm nút Lưu.")
+            st.caption("Sửa xong một ô, nhấn **Enter**, rồi bấm nút Lưu.")
             ver = st.session_state.setdefault("ed_ver", 0)
             ed_key = f"del_editor_{ver}"
 
             cols = ["rid", "Nguồn", "Tên sản phẩm", "Số sao", "Nội dung review"]
             sample = rv[cols].head(300).copy().reset_index(drop=True)
             sample.insert(0, "Xóa", False)
-            st.data_editor(
+            edited = st.data_editor(
                 sample,
                 hide_index=True,
                 use_container_width=True,
@@ -629,31 +629,40 @@ if admin:
                     "Số sao": st.column_config.NumberColumn("Số sao", min_value=1, max_value=5, step=1),
                 },
             )
+            b = edited.reset_index(drop=True)
 
-            # Đọc trực tiếp các ô đã sửa mà Streamlit ghi lại
+            # Cách 1: so sánh bảng trước/sau
+            star_diff = b["Số sao"].fillna(-1).astype(float) != sample["Số sao"].fillna(-1).astype(float)
+            text_diff = b["Nội dung review"].fillna("").astype(str) != sample["Nội dung review"].fillna("").astype(str)
+            upd = {}
+            for i in b.index[(star_diff | text_diff) & ~b["Xóa"].astype(bool)]:
+                if pd.notna(b.at[i, "Số sao"]):
+                    upd[b.at[i, "rid"]] = (b.at[i, "Số sao"], str(b.at[i, "Nội dung review"] or ""))
+
+            # Cách 2: đọc danh sách ô đã sửa do Streamlit ghi lại
             er = st.session_state.get(ed_key, {}).get("edited_rows", {})
-            picked, upd = [], []
             for i, ch in er.items():
                 i = int(i)
-                if i >= len(sample):
-                    continue
-                rid_i = sample.at[i, "rid"]
-                if ch.get("Xóa"):
-                    picked.append(rid_i)
-                elif "Số sao" in ch or "Nội dung review" in ch:
-                    stars_i = ch.get("Số sao", sample.at[i, "Số sao"])
-                    text_i = ch.get("Nội dung review", sample.at[i, "Nội dung review"])
-                    if stars_i is not None and not pd.isna(stars_i):
-                        upd.append((rid_i, stars_i, str(text_i or "")))
+                if i < len(sample) and not ch.get("Xóa") and ("Số sao" in ch or "Nội dung review" in ch):
+                    s_i = ch.get("Số sao", sample.at[i, "Số sao"])
+                    t_i = ch.get("Nội dung review", sample.at[i, "Nội dung review"])
+                    if s_i is not None and pd.notna(s_i):
+                        upd[sample.at[i, "rid"]] = (s_i, str(t_i or ""))
+
+            picked = b.loc[b["Xóa"].astype(bool), "rid"].tolist()
+            st.caption(f"🔎 Đang nhận diện: {len(upd)} dòng sửa, {len(picked)} dòng chọn xóa.")
 
             c_upd, c_del = st.columns(2)
-            if c_upd.button(f"💾 Lưu {len(upd)} review đã sửa", disabled=not upd, use_container_width=True):
-                for rid_i, stars_i, text_i in upd:
-                    du.update_review(rid_i, stars_i, text_i)
-                st.cache_data.clear()
-                st.session_state["ed_ver"] = ver + 1
-                st.success(f"Đã cập nhật {len(upd)} review.")
-                st.rerun()
+            if c_upd.button(f"💾 Lưu {len(upd)} review đã sửa", use_container_width=True):
+                if not upd:
+                    st.warning("Chưa phát hiện ô nào bị sửa. Hãy sửa Số sao hoặc Nội dung rồi nhấn Enter.")
+                else:
+                    for rid_i, (s_i, t_i) in upd.items():
+                        du.update_review(rid_i, s_i, t_i)
+                    st.cache_data.clear()
+                    st.session_state["ed_ver"] = ver + 1
+                    st.success(f"Đã cập nhật {len(upd)} review.")
+                    st.rerun()
             if c_del.button(f"🗑️ Xóa {len(picked)} review đã chọn", disabled=not picked, use_container_width=True):
                 n = du.delete_rows(picked, user["username"])
                 st.session_state["ed_ver"] = ver + 1
