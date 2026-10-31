@@ -597,9 +597,13 @@ if admin:
         )
  
         # ---------------- UPDATE + DELETE từng dòng ----------------
-        with a_edit:
+               with a_edit:
             st.markdown("Sửa trực tiếp **Số sao** và **Nội dung review** trong bảng, hoặc tick **Xóa** "
                         "(tối đa 300 dòng theo bộ lọc hiện tại).")
+            st.caption("Sửa xong một ô, nhấn **Enter** hoặc bấm ra ngoài ô để ghi nhận, rồi bấm nút Lưu.")
+            ver = st.session_state.setdefault("ed_ver", 0)
+            ed_key = f"del_editor_{ver}"
+
             cols = ["rid", "Nguồn", "Tên sản phẩm", "Số sao", "Nội dung review"]
             sample = rv[cols].head(300).copy().reset_index(drop=True)
             sample.insert(0, "Xóa", False)
@@ -607,7 +611,7 @@ if admin:
                 sample,
                 hide_index=True,
                 use_container_width=True,
-                key="del_editor",
+                key=ed_key,
                 disabled=["rid", "Nguồn", "Tên sản phẩm"],
                 column_config={
                     "Xóa": st.column_config.CheckboxColumn("Xóa"),
@@ -615,24 +619,34 @@ if admin:
                     "Số sao": st.column_config.NumberColumn("Số sao", min_value=1, max_value=5, step=1),
                 },
             )
-            b = edited.reset_index(drop=True)
-            picked = b.loc[b["Xóa"], "rid"].tolist()
- 
-            changed = (
-                (sample["Số sao"].fillna(-1) != b["Số sao"].fillna(-1))
-                | (sample["Nội dung review"].fillna("") != b["Nội dung review"].fillna(""))
-            ) & ~b["Xóa"]
-            upd = b[changed & b["Số sao"].notna()]
- 
+
+            # Đọc trực tiếp các ô đã sửa mà Streamlit ghi lại
+            er = st.session_state.get(ed_key, {}).get("edited_rows", {})
+            picked, upd = [], []
+            for i, ch in er.items():
+                i = int(i)
+                if i >= len(sample):
+                    continue
+                rid_i = sample.at[i, "rid"]
+                if ch.get("Xóa"):
+                    picked.append(rid_i)
+                elif "Số sao" in ch or "Nội dung review" in ch:
+                    stars_i = ch.get("Số sao", sample.at[i, "Số sao"])
+                    text_i = ch.get("Nội dung review", sample.at[i, "Nội dung review"])
+                    if stars_i is not None and not pd.isna(stars_i):
+                        upd.append((rid_i, stars_i, str(text_i or "")))
+
             c_upd, c_del = st.columns(2)
-            if c_upd.button(f"💾 Lưu {len(upd)} review đã sửa", disabled=upd.empty, use_container_width=True):
-                for _, r in upd.iterrows():
-                    du.update_review(r["rid"], r["Số sao"], str(r["Nội dung review"]))
+            if c_upd.button(f"💾 Lưu {len(upd)} review đã sửa", disabled=not upd, use_container_width=True):
+                for rid_i, stars_i, text_i in upd:
+                    du.update_review(rid_i, stars_i, text_i)
                 st.cache_data.clear()
+                st.session_state["ed_ver"] = ver + 1      # reset bảng sửa
                 st.success(f"Đã cập nhật {len(upd)} review.")
                 st.rerun()
             if c_del.button(f"🗑️ Xóa {len(picked)} review đã chọn", disabled=not picked, use_container_width=True):
                 n = du.delete_rows(picked, user["username"])
+                st.session_state["ed_ver"] = ver + 1
                 st.success(f"Đã xóa {n} review.")
                 st.rerun()
  
