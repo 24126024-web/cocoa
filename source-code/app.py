@@ -527,7 +527,7 @@ with tabs[2], guard("Power BI"):
         from powerbi_dashboard import render_powerbi_dashboard
         render_powerbi_dashboard(**get_powerbi_tables(du.data_signature()))
     except ModuleNotFoundError as e:
-        st.error(f"Thiếu file `powerbi_dashboard.py` hoặc thư viện `plotly` ({e}) - hãy đặt file cùng thư mục với app.py và thêm plotly vào requirements.txt.")
+        st.error(f"Thiếu file `powerbi_dashboard.py` hoặc thư viện `plotly` ({e}) -
     except AttributeError as e:
         st.error(f"File data_utils.py chưa cập nhật (thiếu hàm load_powerbi_tables): {e}")
     except Exception as e:
