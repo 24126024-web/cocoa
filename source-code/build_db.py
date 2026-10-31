@@ -1,9 +1,4 @@
-"""Nạp 4 file Excel (Shopee & Hasaki) vào SQLite: cocoon.db
-
-Chạy:  python build_db.py
-Chạy lại bất cứ lúc nào dữ liệu Excel thay đổi (bảng gốc sẽ được ghi đè,
-bảng custom_reviews / review_updates do CRUD tạo ra được giữ nguyên).
-"""
+"""Nạp 4 file Excel (Shopee & Hasaki) vào SQLite: cocoon.db"""
 import sqlite3
 from contextlib import closing
 
