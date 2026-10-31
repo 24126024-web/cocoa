@@ -139,9 +139,9 @@ def _load_raw_excel():
     return hk_p, hk_r, sp_p, sp_r
 
 
-# ---------------------------------------------------------------------
+
 # SQLite
-# ---------------------------------------------------------------------
+
 def _db_read(table: str) -> pd.DataFrame:
     if not DB_PATH.exists():
         return pd.DataFrame()
@@ -165,9 +165,9 @@ def _db_has(table: str) -> bool:
         return False
 
 
-# ---------------------------------------------------------------------
+
 # MongoDB Atlas (đọc cấu hình từ st.secrets["mongo"])
-# ---------------------------------------------------------------------
+
 _MONGO: dict = {}
 _MONGO_COLS = {
     "hasaki_products": "Cocoon.Hasaki.productss",
@@ -432,9 +432,9 @@ def apply_deletions(df: pd.DataFrame) -> pd.DataFrame:
     return df[~df["rid"].isin(gone)] if gone else df
 
 
-# ---------------------------------------------------------------------
+
 # CRUD: Create + Update
-# ---------------------------------------------------------------------
+
 def add_review(source: str, ma_sp: str, stars: int, content: str, date) -> str:
     """Thêm review mới. Trả về rid."""
     rid = f"NEW-{datetime.now():%Y%m%d%H%M%S%f}"
@@ -497,9 +497,9 @@ def apply_crud(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-# ---------------------------------------------------------------------
+
 # Sao lưu / phục hồi
-# ---------------------------------------------------------------------
+
 _BACKUP_FILES = {"cocoon.db": lambda: DB_PATH, "deleted_rows.json": lambda: DELETED_FILE}
 
 
