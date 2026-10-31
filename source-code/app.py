@@ -587,15 +587,7 @@ with tabs[3], guard("Kết quả mô hình"):
         st.caption("Các file CSV/PNG đang có trong repo:")
         st.code("\n".join(_all[:60]) if _all else "(không có file nào)")
 
-# =====================================================================
-# CÁCH DÁN:
-#  1. Trong app.py, tìm dòng `if admin:` NẰM Ở CUỐI FILE (ngay sau khối
-#     `with tabs[3], guard("Kết quả mô hình"):`), dòng ngay dưới nó là
-#     `    with tabs[4], guard("Quản trị"):`
-#  2. Xóa từ dòng `if admin:` đó đến HẾT FILE.
-#  3. Dán toàn bộ đoạn dưới (bắt đầu từ chữ `if admin:` sát lề trái).
-#  Không dán dòng chú thích này.
-# =====================================================================
+
 
 if admin:
     with tabs[4], guard("Quản trị"):
@@ -607,7 +599,7 @@ if admin:
         )
 
         # ---------------- UPDATE + DELETE từng dòng ----------------
-               with a_edit:
+        with a_edit:
             st.markdown("Sửa trực tiếp **Số sao** và **Nội dung review** trong bảng, hoặc tick **Xóa** "
                         "(tối đa 300 dòng theo bộ lọc hiện tại).")
             st.caption("Sửa xong một ô, nhấn **Enter**, rồi bấm nút Lưu.")
