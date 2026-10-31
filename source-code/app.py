@@ -587,17 +587,27 @@ with tabs[3], guard("Kết quả mô hình"):
         st.caption("Các file CSV/PNG đang có trong repo:")
         st.code("\n".join(_all[:60]) if _all else "(không có file nào)")
 
+# =====================================================================
+# CÁCH DÁN:
+#  1. Trong app.py, tìm dòng `if admin:` NẰM Ở CUỐI FILE (ngay sau khối
+#     `with tabs[3], guard("Kết quả mô hình"):`), dòng ngay dưới nó là
+#     `    with tabs[4], guard("Quản trị"):`
+#  2. Xóa từ dòng `if admin:` đó đến HẾT FILE.
+#  3. Dán toàn bộ đoạn dưới (bắt đầu từ chữ `if admin:` sát lề trái).
+#  Không dán dòng chú thích này.
+# =====================================================================
+
 if admin:
     with tabs[4], guard("Quản trị"):
         st.subheader("Quản trị dữ liệu")
         st.caption("Xóa là *xóa mềm*: dữ liệu gốc không bị sửa, có thể khôi phục.")
- 
+
         a_edit, a_add, a_bulk, a_backup = st.tabs(
             ["✏️ Sửa / Xóa review", "➕ Thêm review", "🗑️ Xóa hàng loạt & nhật ký", "💾 Sao lưu / Phục hồi"]
         )
- 
+
         # ---------------- UPDATE + DELETE từng dòng ----------------
-               with a_edit:
+        with a_edit:
             st.markdown("Sửa trực tiếp **Số sao** và **Nội dung review** trong bảng, hoặc tick **Xóa** "
                         "(tối đa 300 dòng theo bộ lọc hiện tại).")
             st.caption("Sửa xong một ô, nhấn **Enter** hoặc bấm ra ngoài ô để ghi nhận, rồi bấm nút Lưu.")
@@ -607,7 +617,7 @@ if admin:
             cols = ["rid", "Nguồn", "Tên sản phẩm", "Số sao", "Nội dung review"]
             sample = rv[cols].head(300).copy().reset_index(drop=True)
             sample.insert(0, "Xóa", False)
-            edited = st.data_editor(
+            st.data_editor(
                 sample,
                 hide_index=True,
                 use_container_width=True,
@@ -641,7 +651,7 @@ if admin:
                 for rid_i, stars_i, text_i in upd:
                     du.update_review(rid_i, stars_i, text_i)
                 st.cache_data.clear()
-                st.session_state["ed_ver"] = ver + 1      # reset bảng sửa
+                st.session_state["ed_ver"] = ver + 1
                 st.success(f"Đã cập nhật {len(upd)} review.")
                 st.rerun()
             if c_del.button(f"🗑️ Xóa {len(picked)} review đã chọn", disabled=not picked, use_container_width=True):
@@ -649,7 +659,7 @@ if admin:
                 st.session_state["ed_ver"] = ver + 1
                 st.success(f"Đã xóa {n} review.")
                 st.rerun()
- 
+
         # ---------------- CREATE ----------------
         with a_add:
             st.markdown("Thêm một review mới cho sản phẩm đã có trong dữ liệu.")
@@ -676,7 +686,7 @@ if admin:
                             st.cache_data.clear()
                             st.success(f"Đã thêm review {rid_new}.")
                             st.rerun()
- 
+
         # ---------------- Xóa hàng loạt + nhật ký ----------------
         with a_bulk:
             st.markdown("**Xóa toàn bộ review đang lọc**")
@@ -685,7 +695,7 @@ if admin:
                 n = du.delete_rows(rv["rid"].tolist(), user["username"])
                 st.success(f"Đã xóa {n} review.")
                 st.rerun()
- 
+
             st.markdown("**Nhật ký xóa / khôi phục**")
             log = du.load_deleted()
             if log:
@@ -695,7 +705,7 @@ if admin:
                     st.rerun()
             else:
                 st.write("Chưa có review nào bị xóa.")
- 
+
         # ---------------- Sao lưu / phục hồi ----------------
         with a_backup:
             st.markdown("**Sao lưu**: tải về file zip gồm `cocoon.db` (cơ sở dữ liệu) và `deleted_rows.json`.")
@@ -708,7 +718,7 @@ if admin:
                 )
             else:
                 st.warning("Chưa có file cocoon.db. Hãy chạy `python build_db.py` trước.")
- 
+
             st.markdown("**Phục hồi**: tải lên file zip sao lưu để khôi phục toàn bộ dữ liệu.")
             up = st.file_uploader("Chọn file backup (.zip)", type=["zip"], key="restore_zip")
             if up is not None and st.button("♻️ Phục hồi từ file này", type="primary"):
