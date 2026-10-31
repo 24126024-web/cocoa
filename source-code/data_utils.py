@@ -165,8 +165,90 @@ def _db_has(table: str) -> bool:
         return False
 
 
+# ---------------------------------------------------------------------
+# MongoDB Atlas (đọc cấu hình từ st.secrets["mongo"])
+# ---------------------------------------------------------------------
+_MONGO: dict = {}
+_MONGO_COLS = {
+    "hasaki_products": "Cocoon.Hasaki.productss",
+    "hasaki_reviews": "Cocoon.Hasaki.reviewss",
+    "shopee_products": "Cocoon.Shopee.productss",
+    "shopee_reviews": "Cocoon.Shopee.reviewss",
+}
+
+
+def _mongo_cfg() -> dict | None:
+    try:
+        import streamlit as st
+        cfg = dict(st.secrets["mongo"])
+        return cfg if cfg.get("uri") else None
+    except Exception:
+        return None
+
+
+def _mongo_db():
+    """Trả về database MongoDB, hoặc None nếu chưa cấu hình / không kết nối được."""
+    cfg = _mongo_cfg()
+    if not cfg:
+        return None
+    if "client" not in _MONGO:
+        try:
+            from pymongo import MongoClient
+            c = MongoClient(cfg["uri"], serverSelectionTimeoutMS=5000)
+            c.admin.command("ping")
+            _MONGO["client"] = c
+        except Exception as e:  # noqa: BLE001
+            _MONGO["client"] = None
+            _MONGO["error"] = f"{type(e).__name__}: {e}"
+    c = _MONGO["client"]
+    return c[cfg.get("db", "Cocoon")] if c else None
+
+
+def mongo_status() -> str:
+    """Dòng trạng thái để hiện trong app."""
+    if not _mongo_cfg():
+        return "Chưa cấu hình MongoDB (đang dùng SQLite/Excel)"
+    if _mongo_db() is None:
+        return "Lỗi kết nối MongoDB: " + _MONGO.get("error", "không rõ")
+    return "Đã kết nối MongoDB Atlas"
+
+
+def _mongo_read(table: str) -> pd.DataFrame:
+    db = _mongo_db()
+    if db is None:
+        return pd.DataFrame()
+    cfg = _mongo_cfg() or {}
+    name = cfg.get("col_" + table, _MONGO_COLS.get(table, table))
+    try:
+        return pd.DataFrame(list(db[name].find({}, {"_id": 0})))
+    except Exception:
+        return pd.DataFrame()
+
+
+def _custom_read(table: str) -> pd.DataFrame:
+    """Bảng review thêm mới / sửa: ưu tiên MongoDB, không có thì SQLite."""
+    if _mongo_db() is not None:
+        return _mongo_read(table)
+    return _db_read(table)
+
+
+def _custom_append(table: str, row: pd.DataFrame) -> None:
+    db = _mongo_db()
+    if db is not None:
+        db[table].insert_many(row.to_dict("records"))
+        return
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        row.to_sql(table, con, if_exists="append", index=False)
+        con.commit()
+
+
 def _load_raw():
-    """Ưu tiên đọc từ SQLite; chưa có DB thì đọc Excel như cũ."""
+    """Thứ tự ưu tiên: MongoDB -> SQLite -> Excel."""
+    if _mongo_db() is not None:
+        dfs = tuple(_clean_raw(_mongo_read(t)) for t in _DB_TABLES)
+        if any(not d.empty for d in dfs):
+            return dfs
     if any(_db_has(t) for t in _DB_TABLES):
         return tuple(_clean_raw(_db_read(t)) for t in _DB_TABLES)
     return _load_raw_excel()
@@ -364,10 +446,7 @@ def add_review(source: str, ma_sp: str, stars: int, content: str, date) -> str:
         "Nội dung review": content,
         "Ngày review": pd.Timestamp(date).isoformat(),
     }])
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with closing(sqlite3.connect(DB_PATH)) as con:
-        row.to_sql("custom_reviews", con, if_exists="append", index=False)
-        con.commit()
+    _custom_append("custom_reviews", row)
     return rid
 
 
@@ -379,10 +458,7 @@ def update_review(rid: str, stars, content: str) -> None:
         "Nội dung review": content,
         "at": datetime.now().isoformat(timespec="seconds"),
     }])
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with closing(sqlite3.connect(DB_PATH)) as con:
-        row.to_sql("review_updates", con, if_exists="append", index=False)
-        con.commit()
+    _custom_append("review_updates", row)
 
 
 def apply_crud(df: pd.DataFrame) -> pd.DataFrame:
@@ -391,14 +467,14 @@ def apply_crud(df: pd.DataFrame) -> pd.DataFrame:
         return df
     df = df.copy()
 
-    ups = _db_read("review_updates")
+    ups = _custom_read("review_updates")
     if not ups.empty:
         ups = ups.drop_duplicates("rid", keep="last").set_index("rid")
         m = df["rid"].isin(ups.index)
         df.loc[m, "Số sao"] = df.loc[m, "rid"].map(ups["Số sao"])
         df.loc[m, "Nội dung review"] = df.loc[m, "rid"].map(ups["Nội dung review"])
 
-    new = _db_read("custom_reviews")
+    new = _custom_read("custom_reviews")
     if not new.empty:
         rows = []
         for _, r in new.iterrows():
