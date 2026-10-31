@@ -1,6 +1,9 @@
 """Nạp, phân loại, lọc và xuất dữ liệu Cocoon (Shopee & Hasaki)."""
 from __future__ import annotations
 
+import sqlite3
+import zipfile
+from contextlib import closing
 import io
 import json
 import re
@@ -88,7 +91,7 @@ def sentiment_from_star(s) -> str:
 def data_signature() -> tuple:
     return tuple(
         (str(f), f.stat().st_mtime, f.stat().st_size) if f.exists() else (str(f), 0, 0)
-        for f in (HASAKI_PROD_FILE, HASAKI_REV_FILE, SHOPEE_PROD_FILE, SHOPEE_REV_FILE)
+        for f in (HASAKI_PROD_FILE, HASAKI_REV_FILE, SHOPEE_PROD_FILE, SHOPEE_REV_FILE, DB_PATH)
     )
 
 
@@ -115,7 +118,7 @@ def _clean_raw(d: pd.DataFrame) -> pd.DataFrame:
     return d.reset_index(drop=True)
 
 
-def _load_raw():
+def _load_raw_excel():
     hk_p = _clean_raw(_read_table(HASAKI_PROD_FILE))
     hk_r = _clean_raw(_read_table(HASAKI_REV_FILE))
 
