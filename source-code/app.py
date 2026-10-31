@@ -590,42 +590,118 @@ with tabs[3], guard("Kết quả mô hình"):
 if admin:
     with tabs[4], guard("Quản trị"):
         st.subheader("Quản trị dữ liệu")
-        st.caption("Xóa là *xóa mềm*: file dữ liệu gốc không bị sửa, có thể khôi phục.")
-
-        st.markdown("**1. Chọn từng review để xóa** (tối đa 300 dòng theo bộ lọc hiện tại)")
-        cols = ["rid", "Nguồn", "Tên sản phẩm", "Số sao", "Nội dung review"]
-        sample = rv[cols].head(300).copy()
-        sample.insert(0, "Xóa", False)
-        edited = st.data_editor(
-            sample,
-            hide_index=True,
-            use_container_width=True,
-            key="del_editor",
-            disabled=cols,
-            column_config={
-                "Xóa": st.column_config.CheckboxColumn("Xóa"),
-                "rid": st.column_config.TextColumn("ID")
-            }
+        st.caption("Xóa là *xóa mềm*: dữ liệu gốc không bị sửa, có thể khôi phục.")
+ 
+        a_edit, a_add, a_bulk, a_backup = st.tabs(
+            ["✏️ Sửa / Xóa review", "➕ Thêm review", "🗑️ Xóa hàng loạt & nhật ký", "💾 Sao lưu / Phục hồi"]
         )
-        picked = edited.loc[edited["Xóa"], "rid"].tolist()
-        if st.button(f"Xóa {len(picked)} review đã chọn", disabled=not picked):
-            n = du.delete_rows(picked, user["username"])
-            st.success(f"Đã xóa {n} review.")
-            st.rerun()
-
-        st.markdown("**2. Xóa toàn bộ review đang lọc**")
-        confirm = st.text_input(f"Gõ XOA để xác nhận xóa {len(rv)} review", key="confirm_all")
-        if st.button("Xóa toàn bộ kết quả lọc", disabled=confirm != "XOA"):
-            n = du.delete_rows(rv["rid"].tolist(), user["username"])
-            st.success(f"Đã xóa {n} review.")
-            st.rerun()
-
-        st.markdown("**3. Nhật ký xóa / khôi phục**")
-        log = du.load_deleted()
-        if log:
-            st.dataframe(pd.DataFrame(log), use_container_width=True, hide_index=True)
-            if st.button("Khôi phục tất cả"):
-                du.restore_all()
+ 
+        # ---------------- UPDATE + DELETE từng dòng ----------------
+        with a_edit:
+            st.markdown("Sửa trực tiếp **Số sao** và **Nội dung review** trong bảng, hoặc tick **Xóa** "
+                        "(tối đa 300 dòng theo bộ lọc hiện tại).")
+            cols = ["rid", "Nguồn", "Tên sản phẩm", "Số sao", "Nội dung review"]
+            sample = rv[cols].head(300).copy().reset_index(drop=True)
+            sample.insert(0, "Xóa", False)
+            edited = st.data_editor(
+                sample,
+                hide_index=True,
+                use_container_width=True,
+                key="del_editor",
+                disabled=["rid", "Nguồn", "Tên sản phẩm"],
+                column_config={
+                    "Xóa": st.column_config.CheckboxColumn("Xóa"),
+                    "rid": st.column_config.TextColumn("ID"),
+                    "Số sao": st.column_config.NumberColumn("Số sao", min_value=1, max_value=5, step=1),
+                },
+            )
+            b = edited.reset_index(drop=True)
+            picked = b.loc[b["Xóa"], "rid"].tolist()
+ 
+            changed = (
+                (sample["Số sao"].fillna(-1) != b["Số sao"].fillna(-1))
+                | (sample["Nội dung review"].fillna("") != b["Nội dung review"].fillna(""))
+            ) & ~b["Xóa"]
+            upd = b[changed & b["Số sao"].notna()]
+ 
+            c_upd, c_del = st.columns(2)
+            if c_upd.button(f"💾 Lưu {len(upd)} review đã sửa", disabled=upd.empty, use_container_width=True):
+                for _, r in upd.iterrows():
+                    du.update_review(r["rid"], r["Số sao"], str(r["Nội dung review"]))
+                st.cache_data.clear()
+                st.success(f"Đã cập nhật {len(upd)} review.")
                 st.rerun()
-        else:
-            st.write("Chưa có review nào bị xóa.")
+            if c_del.button(f"🗑️ Xóa {len(picked)} review đã chọn", disabled=not picked, use_container_width=True):
+                n = du.delete_rows(picked, user["username"])
+                st.success(f"Đã xóa {n} review.")
+                st.rerun()
+ 
+        # ---------------- CREATE ----------------
+        with a_add:
+            st.markdown("Thêm một review mới cho sản phẩm đã có trong dữ liệu.")
+            prods_ = (base[["Nguồn", "Mã SP", "Tên sản phẩm"]].drop_duplicates()
+                      .sort_values(["Nguồn", "Tên sản phẩm"]).reset_index(drop=True))
+            if prods_.empty:
+                st.info("Chưa có sản phẩm nào để thêm review.")
+            else:
+                labels = (prods_["Nguồn"] + " | " + prods_["Tên sản phẩm"].str.slice(0, 60)
+                          + " | " + prods_["Mã SP"].astype(str)).tolist()
+                with st.form("add_review_form", clear_on_submit=True):
+                    idx = st.selectbox("Sản phẩm", range(len(labels)), format_func=lambda i: labels[i])
+                    f1, f2 = st.columns(2)
+                    new_stars = f1.slider("Số sao", 1, 5, 5)
+                    new_date = f2.date_input("Ngày review")
+                    new_text = st.text_area("Nội dung review")
+                    if st.form_submit_button("➕ Thêm review", use_container_width=True):
+                        if not new_text.strip():
+                            st.error("Nội dung review không được để trống.")
+                        else:
+                            row = prods_.iloc[idx]
+                            rid_new = du.add_review(row["Nguồn"], row["Mã SP"], new_stars,
+                                                    new_text.strip(), new_date)
+                            st.cache_data.clear()
+                            st.success(f"Đã thêm review {rid_new}.")
+                            st.rerun()
+ 
+        # ---------------- Xóa hàng loạt + nhật ký ----------------
+        with a_bulk:
+            st.markdown("**Xóa toàn bộ review đang lọc**")
+            confirm = st.text_input(f"Gõ XOA để xác nhận xóa {len(rv)} review", key="confirm_all")
+            if st.button("Xóa toàn bộ kết quả lọc", disabled=confirm != "XOA"):
+                n = du.delete_rows(rv["rid"].tolist(), user["username"])
+                st.success(f"Đã xóa {n} review.")
+                st.rerun()
+ 
+            st.markdown("**Nhật ký xóa / khôi phục**")
+            log = du.load_deleted()
+            if log:
+                st.dataframe(pd.DataFrame(log), use_container_width=True, hide_index=True)
+                if st.button("Khôi phục tất cả review đã xóa"):
+                    du.restore_all()
+                    st.rerun()
+            else:
+                st.write("Chưa có review nào bị xóa.")
+ 
+        # ---------------- Sao lưu / phục hồi ----------------
+        with a_backup:
+            st.markdown("**Sao lưu**: tải về file zip gồm `cocoon.db` (cơ sở dữ liệu) và `deleted_rows.json`.")
+            if du.DB_PATH.exists():
+                st.download_button(
+                    "💾 Tải bản sao lưu (.zip)",
+                    data=du.make_backup(),
+                    file_name=f"cocoon_backup_{pd.Timestamp.now():%Y%m%d_%H%M}.zip",
+                    mime="application/zip",
+                )
+            else:
+                st.warning("Chưa có file cocoon.db. Hãy chạy `python build_db.py` trước.")
+ 
+            st.markdown("**Phục hồi**: tải lên file zip sao lưu để khôi phục toàn bộ dữ liệu.")
+            up = st.file_uploader("Chọn file backup (.zip)", type=["zip"], key="restore_zip")
+            if up is not None and st.button("♻️ Phục hồi từ file này", type="primary"):
+                try:
+                    done = du.restore_backup(up.getvalue())
+                    st.cache_data.clear()
+                    st.success("Đã phục hồi: " + ", ".join(done))
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Phục hồi thất bại: {e}")
